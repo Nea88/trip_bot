@@ -11,7 +11,6 @@ import {
 import { getById as getSuggestionById, excludeSuggestion } from "../services/suggestions.js";
 import { computeWinner } from "../services/pollWinner.js";
 import type { PollDocWithId } from "../types/index.js";
-import { MIMOKROKODIL_TEXT, MIMOKROKODIL_TOKEN } from "../constants.js";
 
 const CALLBACK_PREFIX = "cp";
 
@@ -25,15 +24,13 @@ export async function closePollCommand(ctx: Context): Promise<void> {
 
   const finalPoll = await ctx.api.stopPoll(config.groupChatId, openPoll.messageId);
   const voterCounts = finalPoll.options.map((o) => o.voter_count);
-  const winner = computeWinner(
-    openPoll.optionSuggestionIds,
-    voterCounts,
-    finalPoll.total_voter_count,
-  );
+  const winner = computeWinner(openPoll.optionSuggestionIds, voterCounts);
 
   if (winner.kind === "no_votes") {
     await closeWithoutWinner(openPoll.id);
-    await ctx.reply("Опрос закрыт: никто не проголосовал, место не исключается.");
+    await ctx.reply(
+      "Опрос закрыт: за реальные варианты никто не проголосовал (или все выбрали «Мимокрокодил») — место не исключается.",
+    );
     return;
   }
 
@@ -58,14 +55,6 @@ export async function postPendingResultMessage(
   for (let index = 0; index < candidateSuggestionIds.length; index++) {
     const suggestionId = candidateSuggestionIds[index];
     const count = voterCounts[index];
-
-    if (suggestionId === null) {
-      const label = isTie
-        ? `Выбрать: ${MIMOKROKODIL_TEXT} (${count})`
-        : `Подтвердить: ${MIMOKROKODIL_TEXT} (${count})`;
-      keyboard.text(label, `${CALLBACK_PREFIX}:${poll.id}:confirm:${MIMOKROKODIL_TOKEN}`).row();
-      continue;
-    }
 
     const suggestion = await getSuggestionById(suggestionId);
     if (!suggestion) continue;
@@ -102,14 +91,6 @@ export async function closePollCallback(ctx: CallbackQueryContext<Context>): Pro
   }
 
   const suggestionId = parts[3];
-
-  if (suggestionId === MIMOKROKODIL_TOKEN) {
-    await cancelPendingResult(pollId);
-    await ctx.editMessageText(`Победил вариант «${MIMOKROKODIL_TEXT}» — в этот раз никуда не едем.`);
-    await ctx.answerCallbackQuery();
-    return;
-  }
-
   const suggestion = await getSuggestionById(suggestionId);
   if (!suggestion) {
     await ctx.editMessageText("Это предложение больше не существует.");

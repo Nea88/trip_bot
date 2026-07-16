@@ -22,8 +22,8 @@ export interface SuggestionWithId extends Suggestion {
 export type PollStatus = "open" | "closed";
 
 export interface PendingResult {
-  // null represents the mandatory "Мимокрокодил" (skip) option.
-  candidateSuggestionIds: (string | null)[];
+  // Never includes the mandatory "Мимокрокодил" (skip) option — it can't win.
+  candidateSuggestionIds: string[];
   voterCounts: number[];
 }
 

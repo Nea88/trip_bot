@@ -16,11 +16,13 @@ import { closePollCommand, closePollCallback, closePollCallbackPattern } from ".
 import { restoreCommand } from "../commands/restore.js";
 import { excludedCommand } from "../commands/excluded.js";
 import { startCommand } from "../commands/start.js";
+import { helpCommand } from "../commands/help.js";
 
 export function createBot(): Bot {
   const bot = new Bot(env.botToken);
 
   bot.command("start", requireDM, startCommand);
+  bot.command("help", helpCommand);
 
   bot.command("suggest", requireGroupChat, suggestCommand);
 
