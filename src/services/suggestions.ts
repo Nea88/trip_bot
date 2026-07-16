@@ -41,9 +41,10 @@ export async function addSuggestion(
     addedByUserId,
     addedByUsername,
     addedAt: FieldValue.serverTimestamp() as unknown as Suggestion["addedAt"],
-    status: "active",
+    status: "pending",
     excludedAt: null,
     restoredAt: null,
+    rejectedAt: null,
   };
   const ref = await suggestions.add(doc);
   const snap = await ref.get();
@@ -95,6 +96,17 @@ export async function restoreSuggestion(id: string): Promise<void> {
   await suggestions.doc(id).update({
     status: "active",
     restoredAt: FieldValue.serverTimestamp(),
+  });
+}
+
+export async function approveSuggestion(id: string): Promise<void> {
+  await suggestions.doc(id).update({ status: "active" });
+}
+
+export async function rejectSuggestion(id: string): Promise<void> {
+  await suggestions.doc(id).update({
+    status: "rejected",
+    rejectedAt: FieldValue.serverTimestamp(),
   });
 }
 

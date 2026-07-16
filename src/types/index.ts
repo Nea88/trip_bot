@@ -1,6 +1,9 @@
 import type { Timestamp } from "firebase-admin/firestore";
 
-export type SuggestionStatus = "active" | "excluded";
+// New suggestions start "pending" (awaiting admin review) until approved
+// ("active") or turned down ("rejected" — kept around so the same text can't
+// be resubmitted, unlike a hard /delete).
+export type SuggestionStatus = "pending" | "active" | "excluded" | "rejected";
 
 export interface Suggestion {
   seq: number;
@@ -13,6 +16,7 @@ export interface Suggestion {
   status: SuggestionStatus;
   excludedAt: Timestamp | null;
   restoredAt: Timestamp | null;
+  rejectedAt: Timestamp | null;
 }
 
 export interface SuggestionWithId extends Suggestion {

@@ -1,4 +1,4 @@
-import type { Api } from "grammy";
+import type { Api, InlineKeyboard } from "grammy";
 import { isGroupAdmin } from "./adminAuth.js";
 import { getAllRegistrations } from "./registrations.js";
 
@@ -6,6 +6,7 @@ export async function notifyAdmins(
   api: Api,
   groupChatId: number,
   text: string,
+  keyboard?: InlineKeyboard,
 ): Promise<void> {
   const registrations = await getAllRegistrations();
   await Promise.all(
@@ -13,7 +14,7 @@ export async function notifyAdmins(
       const admin = await isGroupAdmin(api, groupChatId, userId);
       if (!admin) return;
       try {
-        await api.sendMessage(registration.dmChatId, text);
+        await api.sendMessage(registration.dmChatId, text, { reply_markup: keyboard });
       } catch {
         // Registered user may have blocked the bot; skip silently.
       }

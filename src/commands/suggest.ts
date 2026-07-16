@@ -1,4 +1,4 @@
-import type { Context } from "grammy";
+import { InlineKeyboard, type Context } from "grammy";
 import {
   addSuggestion,
   findByNormalizedText,
@@ -6,10 +6,8 @@ import {
 } from "../services/suggestions.js";
 import { notifyAdmins } from "../services/notifications.js";
 import { getGroupConfig } from "../services/groupConfig.js";
-
-// Telegram poll option text is capped at 100 characters; suggestions become
-// poll options, so this must be enforced before a suggestion is ever accepted.
-const MAX_SUGGESTION_LENGTH = 100;
+import { validateSuggestionText } from "../utils/suggestionText.js";
+import { buildReviewCallbackData } from "./reviewSuggestion.js";
 
 export async function suggestCommand(ctx: Context): Promise<void> {
   const text = ctx.match?.toString().trim();
@@ -17,10 +15,9 @@ export async function suggestCommand(ctx: Context): Promise<void> {
     await ctx.reply("Использование: /suggest <куда поехать>");
     return;
   }
-  if (text.length > MAX_SUGGESTION_LENGTH) {
-    await ctx.reply(
-      `Слишком длинно (максимум ${MAX_SUGGESTION_LENGTH} символов) — сократите текст.`,
-    );
+  const validationError = validateSuggestionText(text);
+  if (validationError) {
+    await ctx.reply(validationError);
     return;
   }
 
@@ -28,6 +25,10 @@ export async function suggestCommand(ctx: Context): Promise<void> {
   if (existing) {
     if (existing.status === "active") {
       await ctx.reply(`Такой вариант уже есть в списке: #${existing.seq}`);
+    } else if (existing.status === "pending") {
+      await ctx.reply("Такой вариант уже отправлен на рассмотрение и ждёт решения админа.");
+    } else if (existing.status === "rejected") {
+      await ctx.reply("Этот вариант уже был отклонён админом — повторно предложить его нельзя.");
     } else {
       await ctx.reply(
         `Это место уже предлагали и оно исключено (#${existing.seq}). Попросите админа вернуть его командой /restore ${existing.seq}, вместо того чтобы добавлять заново.`,
@@ -40,12 +41,17 @@ export async function suggestCommand(ctx: Context): Promise<void> {
   const username = ctx.from!.username ?? ctx.from!.first_name ?? "кто-то";
 
   const suggestion = await addSuggestion(text, userId, username);
-  await ctx.reply(`Добавлено предложение #${suggestion.seq}: ${text}`);
+  await ctx.reply("Ваш вариант отправлен на рассмотрение админу.");
 
   const config = await getGroupConfig();
+  const keyboard = new InlineKeyboard()
+    .text("Одобрить", buildReviewCallbackData(suggestion.id, "approve"))
+    .text("Отклонить", buildReviewCallbackData(suggestion.id, "reject"));
+
   await notifyAdmins(
     ctx.api,
     config.groupChatId,
     `Новое предложение маршрута от @${username}:\n#${suggestion.seq}: ${text}`,
+    keyboard,
   );
 }
