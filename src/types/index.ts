@@ -5,6 +5,8 @@ export type SuggestionStatus = "active" | "excluded";
 export interface Suggestion {
   seq: number;
   text: string;
+  // Lowercased/trimmed/whitespace-collapsed text, used for duplicate detection.
+  textNormalized: string;
   addedByUserId: number;
   addedByUsername: string;
   addedAt: Timestamp;
@@ -47,6 +49,10 @@ export interface GroupConfig {
   scheduleDay: number | null;
   scheduleTime: string | null;
   timezone: string | null;
+  reminderTime: string | null;
+  reminderTimezone: string | null;
+  // null means "use DEFAULT_REMINDER_TEXT".
+  reminderText: string | null;
   updatedAt: Timestamp;
 }
 

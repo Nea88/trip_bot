@@ -15,6 +15,19 @@ async function nextSeq(): Promise<number> {
   });
 }
 
+export function normalizeSuggestionText(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export async function findByNormalizedText(
+  normalized: string,
+): Promise<SuggestionWithId | null> {
+  const snap = await suggestions.where("textNormalized", "==", normalized).limit(1).get();
+  if (snap.empty) return null;
+  const doc = snap.docs[0];
+  return { id: doc.id, ...(doc.data() as Suggestion) };
+}
+
 export async function addSuggestion(
   text: string,
   addedByUserId: number,
@@ -24,6 +37,7 @@ export async function addSuggestion(
   const doc: Suggestion = {
     seq,
     text,
+    textNormalized: normalizeSuggestionText(text),
     addedByUserId,
     addedByUsername,
     addedAt: FieldValue.serverTimestamp() as unknown as Suggestion["addedAt"],
@@ -60,7 +74,10 @@ export async function getBySeq(seq: number): Promise<SuggestionWithId | null> {
 }
 
 export async function editSuggestionText(id: string, newText: string): Promise<void> {
-  await suggestions.doc(id).update({ text: newText });
+  await suggestions.doc(id).update({
+    text: newText,
+    textNormalized: normalizeSuggestionText(newText),
+  });
 }
 
 export async function deleteSuggestion(id: string): Promise<void> {

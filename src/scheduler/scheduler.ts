@@ -2,8 +2,10 @@ import { schedule, type ScheduledTask } from "node-cron";
 import type { Api } from "grammy";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { createPollIfPossible } from "../services/pollCreation.js";
+import { DEFAULT_REMINDER_TEXT } from "../constants.js";
 
-let currentTask: ScheduledTask | null = null;
+let currentPollTask: ScheduledTask | null = null;
+let currentReminderTask: ScheduledTask | null = null;
 
 async function runScheduledPollCreation(api: Api): Promise<void> {
   const config = await getGroupConfig();
@@ -18,20 +20,46 @@ async function runScheduledPollCreation(api: Api): Promise<void> {
 }
 
 export async function rescheduleFromConfig(api: Api): Promise<void> {
-  if (currentTask) {
-    await currentTask.stop();
-    currentTask = null;
+  if (currentPollTask) {
+    await currentPollTask.stop();
+    currentPollTask = null;
   }
 
   const config = await getGroupConfig();
-  if (config.scheduleDay === null || config.scheduleTime === null || config.timezone === null) {
+  if (config.scheduleDay == null || config.scheduleTime == null || config.timezone == null) {
     return;
   }
 
   const [hour, minute] = config.scheduleTime.split(":").map(Number);
   const expression = `${minute} ${hour} * * ${config.scheduleDay}`;
 
-  currentTask = schedule(expression, () => runScheduledPollCreation(api), {
+  currentPollTask = schedule(expression, () => runScheduledPollCreation(api), {
     timezone: config.timezone,
+  });
+}
+
+async function runReminder(api: Api): Promise<void> {
+  const config = await getGroupConfig();
+  const text = config.reminderText ?? DEFAULT_REMINDER_TEXT;
+  await api.sendMessage(config.groupChatId, text);
+  console.log("[scheduler] Sent daily suggestion reminder.");
+}
+
+export async function rescheduleReminderFromConfig(api: Api): Promise<void> {
+  if (currentReminderTask) {
+    await currentReminderTask.stop();
+    currentReminderTask = null;
+  }
+
+  const config = await getGroupConfig();
+  if (config.reminderTime == null || config.reminderTimezone == null) {
+    return;
+  }
+
+  const [hour, minute] = config.reminderTime.split(":").map(Number);
+  const expression = `${minute} ${hour} * * *`;
+
+  currentReminderTask = schedule(expression, () => runReminder(api), {
+    timezone: config.reminderTimezone,
   });
 }

@@ -1,5 +1,9 @@
 import type { Context } from "grammy";
-import { addSuggestion } from "../services/suggestions.js";
+import {
+  addSuggestion,
+  findByNormalizedText,
+  normalizeSuggestionText,
+} from "../services/suggestions.js";
 import { notifyAdmins } from "../services/notifications.js";
 import { getGroupConfig } from "../services/groupConfig.js";
 
@@ -17,6 +21,18 @@ export async function suggestCommand(ctx: Context): Promise<void> {
     await ctx.reply(
       `Слишком длинно (максимум ${MAX_SUGGESTION_LENGTH} символов) — сократите текст.`,
     );
+    return;
+  }
+
+  const existing = await findByNormalizedText(normalizeSuggestionText(text));
+  if (existing) {
+    if (existing.status === "active") {
+      await ctx.reply(`Такой вариант уже есть в списке: #${existing.seq}`);
+    } else {
+      await ctx.reply(
+        `Это место уже предлагали и оно исключено (#${existing.seq}). Попросите админа вернуть его командой /restore ${existing.seq}, вместо того чтобы добавлять заново.`,
+      );
+    }
     return;
   }
 

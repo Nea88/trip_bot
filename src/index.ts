@@ -1,7 +1,7 @@
 import http from "node:http";
 import { createBot } from "./bot/bot.js";
 import { env } from "./config/env.js";
-import { rescheduleFromConfig } from "./scheduler/scheduler.js";
+import { rescheduleFromConfig, rescheduleReminderFromConfig } from "./scheduler/scheduler.js";
 import { getPollsWithPendingResult } from "./services/polls.js";
 import { postPendingResultMessage } from "./commands/closePoll.js";
 
@@ -11,6 +11,7 @@ async function main(): Promise<void> {
   await bot.init();
 
   await rescheduleFromConfig(bot.api);
+  await rescheduleReminderFromConfig(bot.api);
 
   const pending = await getPollsWithPendingResult();
   for (const poll of pending) {

@@ -13,6 +13,9 @@ export async function getGroupConfig(): Promise<GroupConfig> {
       scheduleDay: null,
       scheduleTime: null,
       timezone: null,
+      reminderTime: null,
+      reminderTimezone: null,
+      reminderText: null,
       updatedAt: FieldValue.serverTimestamp() as unknown as GroupConfig["updatedAt"],
     };
     await configDoc.set(seeded);
@@ -47,6 +50,24 @@ export async function setSchedule(
       timezone,
       updatedAt: FieldValue.serverTimestamp(),
     },
+    { merge: true },
+  );
+}
+
+export async function setReminderSchedule(time: string, timezone: string): Promise<void> {
+  await configDoc.set(
+    {
+      reminderTime: time,
+      reminderTimezone: timezone,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+}
+
+export async function setReminderText(text: string): Promise<void> {
+  await configDoc.set(
+    { reminderText: text, updatedAt: FieldValue.serverTimestamp() },
     { merge: true },
   );
 }
