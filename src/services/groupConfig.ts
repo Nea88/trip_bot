@@ -19,7 +19,20 @@ export async function getGroupConfig(): Promise<GroupConfig> {
     const fresh = await configDoc.get();
     return fresh.data() as GroupConfig;
   }
-  return snap.data() as GroupConfig;
+
+  const data = snap.data() as GroupConfig;
+  // GROUP_CHAT_ID is deployment config (env var / addon option), not
+  // user-editable data — it must always win over whatever was seeded into
+  // Firestore on some earlier run (e.g. a stale/wrong value, or a group that
+  // later migrated to a supergroup and got a new chat id).
+  if (data.groupChatId !== env.groupChatId) {
+    await configDoc.set(
+      { groupChatId: env.groupChatId, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+    return { ...data, groupChatId: env.groupChatId };
+  }
+  return data;
 }
 
 export async function setSchedule(
