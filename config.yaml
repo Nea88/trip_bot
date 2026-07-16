@@ -1,0 +1,25 @@
+name: "Ride Bot"
+version: "1.0.0"
+slug: "ride_bot"
+description: "Telegram-бот для планирования групповых поездок"
+arch:
+  - aarch64
+  - armv7
+  - armhf
+  - amd64
+  - i386
+startup: services
+boot: auto
+init: false
+options:
+  bot_token: ""
+  group_chat_id: ""
+  firebase_project_id: ""
+  firebase_service_account_json: ""
+  default_timezone: "Europe/Moscow"
+schema:
+  bot_token: str
+  group_chat_id: str
+  firebase_project_id: str
+  firebase_service_account_json: str
+  default_timezone: str

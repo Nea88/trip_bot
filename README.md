@@ -57,9 +57,16 @@ npm install
 npm run dev
 ```
 
-## Деплой (Render / Fly.io / Railway, free tier)
+## Деплой
 
-Бот работает через long polling — публичный URL/вебхук не нужен.
+Бот работает через long polling — публичный URL/вебхук не нужен, только
+долгоживущий процесс.
+
+Основной вариант — **Raspberry Pi с Home Assistant OS**, бот ставится как
+локальный HA-аддон (файлы `config.yaml`, `build.yaml`, `Dockerfile`, `run.sh`
+в корне проекта). Подробная пошаговая инструкция — в [DEPLOY.md](./DEPLOY.md).
+
+Для обычного Node-хостинга (VPS, Oracle Cloud Free Tier и т.п., без HAOS):
 
 ```bash
 npm run build
@@ -69,7 +76,8 @@ npm start
 `Procfile` объявляет процесс как `worker` (background worker, без HTTP-порта).
 Если конкретный хостинг всё же требует привязку порта даже для worker-сервиса,
 задайте `PORT` — поднимется минимальный healthcheck-сервер, не влияющий на
-логику бота.
+логику бота. Полный разбор вариантов (включая почему Render/Fly.io/Railway не
+подходят бесплатно для always-on воркера в 2026 году) — в DEPLOY.md.
 
 ## Firestore-индексы
 
