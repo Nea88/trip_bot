@@ -24,7 +24,7 @@ export function createBot(): Bot {
 
   bot.command("suggest", requireGroupChat, suggestCommand);
 
-  bot.command("list", requireAdmin, listCommand);
+  bot.command("list", requireGroupChat, listCommand);
   bot.command("edit", requireAdmin, editCommand);
   bot.command("delete", requireAdmin, deleteCommand);
   bot.command("create_poll", requireAdmin, createPollCommand);
