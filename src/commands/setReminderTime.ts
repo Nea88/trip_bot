@@ -24,5 +24,5 @@ export async function setReminderTimeCommand(ctx: Context): Promise<void> {
 
   await setReminderSchedule(timeArg, tzArg);
   await rescheduleReminderFromConfig(ctx.api);
-  await ctx.reply(`Ежедневная памятка будет приходить в ${timeArg} (${tzArg}).`);
+  await ctx.reply(`Памятка будет приходить через день в ${timeArg} (${tzArg}).`);
 }

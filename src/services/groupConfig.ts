@@ -16,6 +16,7 @@ export async function getGroupConfig(): Promise<GroupConfig> {
       reminderTime: null,
       reminderTimezone: null,
       reminderText: null,
+      lastReminderSentDate: null,
       updatedAt: FieldValue.serverTimestamp() as unknown as GroupConfig["updatedAt"],
     };
     await configDoc.set(seeded);
@@ -68,6 +69,13 @@ export async function setReminderSchedule(time: string, timezone: string): Promi
 export async function setReminderText(text: string): Promise<void> {
   await configDoc.set(
     { reminderText: text, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+}
+
+export async function markReminderSent(isoDate: string): Promise<void> {
+  await configDoc.set(
+    { lastReminderSentDate: isoDate, updatedAt: FieldValue.serverTimestamp() },
     { merge: true },
   );
 }

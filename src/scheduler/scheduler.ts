@@ -1,6 +1,7 @@
 import { schedule, type ScheduledTask } from "node-cron";
 import type { Api } from "grammy";
-import { getGroupConfig } from "../services/groupConfig.js";
+import { DateTime } from "luxon";
+import { getGroupConfig, markReminderSent } from "../services/groupConfig.js";
 import { createPollIfPossible } from "../services/pollCreation.js";
 import { DEFAULT_REMINDER_TEXT } from "../constants.js";
 
@@ -40,9 +41,26 @@ export async function rescheduleFromConfig(api: Api): Promise<void> {
 
 async function runReminder(api: Api): Promise<void> {
   const config = await getGroupConfig();
+  const today = DateTime.now().setZone(config.reminderTimezone ?? "UTC").toISODate();
+
+  if (today && config.lastReminderSentDate) {
+    const daysSinceLastSent = DateTime.fromISO(today).diff(
+      DateTime.fromISO(config.lastReminderSentDate),
+      "days",
+    ).days;
+    // Every-other-day cadence: skip if we sent one less than 2 days ago.
+    if (daysSinceLastSent < 2) {
+      console.log("[scheduler] Skipped reminder (every-other-day schedule).");
+      return;
+    }
+  }
+
   const text = config.reminderText ?? DEFAULT_REMINDER_TEXT;
   await api.sendMessage(config.groupChatId, text);
-  console.log("[scheduler] Sent daily suggestion reminder.");
+  if (today) {
+    await markReminderSent(today);
+  }
+  console.log("[scheduler] Sent suggestion reminder.");
 }
 
 export async function rescheduleReminderFromConfig(api: Api): Promise<void> {

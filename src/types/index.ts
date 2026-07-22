@@ -57,6 +57,9 @@ export interface GroupConfig {
   reminderTimezone: string | null;
   // null means "use DEFAULT_REMINDER_TEXT".
   reminderText: string | null;
+  // ISO date (YYYY-MM-DD, in reminderTimezone) of the last sent reminder.
+  // Used to send the reminder every other day instead of daily.
+  lastReminderSentDate: string | null;
   updatedAt: Timestamp;
 }
 
