@@ -1,4 +1,4 @@
-import { InlineKeyboard, type Api, type CallbackQueryContext, type Context } from "grammy";
+import { GrammyError, InlineKeyboard, type Api, type CallbackQueryContext, type Context } from "grammy";
 import { getGroupConfig } from "../services/groupConfig.js";
 import {
   getOpenPoll,
@@ -22,7 +22,21 @@ export async function closePollCommand(ctx: Context): Promise<void> {
     return;
   }
 
-  const finalPoll = await ctx.api.stopPoll(config.groupChatId, openPoll.messageId);
+  let finalPoll;
+  try {
+    finalPoll = await ctx.api.stopPoll(config.groupChatId, openPoll.messageId);
+  } catch (err) {
+    if (err instanceof GrammyError) {
+      // Poll message was deleted (or is otherwise gone) — no way to get
+      // results, so just close it out instead of leaving it stuck "open".
+      await closeWithoutWinner(openPoll.id);
+      await ctx.reply(
+        "Не удалось найти сообщение с опросом (похоже, его удалили) — опрос закрыт без результатов, место не исключается.",
+      );
+      return;
+    }
+    throw err;
+  }
   const voterCounts = finalPoll.options.map((o) => o.voter_count);
   const winner = computeWinner(openPoll.optionSuggestionIds, voterCounts);
 
