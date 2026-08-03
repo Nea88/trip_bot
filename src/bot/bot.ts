@@ -16,6 +16,7 @@ import { getReminderCommand } from "../commands/getReminder.js";
 import { getOpenPollCommand } from "../commands/getOpenPoll.js";
 import { closePollCommand, closePollCallback, closePollCallbackPattern } from "../commands/closePoll.js";
 import { restoreCommand } from "../commands/restore.js";
+import { excludeCommand } from "../commands/exclude.js";
 import { excludedCommand } from "../commands/excluded.js";
 import { startCommand } from "../commands/start.js";
 import { helpCommand } from "../commands/help.js";
@@ -41,6 +42,7 @@ export function createBot(): Bot {
   bot.command("get_open_poll", requireAdmin, getOpenPollCommand);
   bot.command("close_poll", requireAdmin, requireGroupChat, closePollCommand);
   bot.command("restore", requireAdmin, restoreCommand);
+  bot.command("exclude", requireAdmin, excludeCommand);
   bot.command("excluded", requireAdmin, excludedCommand);
 
   bot.callbackQuery(deleteCallbackPattern, requireAdmin, deleteCallback);
