@@ -4,11 +4,16 @@ import { env } from "./config/env.js";
 import { rescheduleFromConfig, rescheduleReminderFromConfig } from "./scheduler/scheduler.js";
 import { getPollsWithPendingResult } from "./services/polls.js";
 import { postPendingResultMessage } from "./commands/closePoll.js";
+import { registerBotCommands } from "./bot/commands.js";
+import { getGroupConfig } from "./services/groupConfig.js";
 
 async function main(): Promise<void> {
   const bot = createBot();
 
   await bot.init();
+
+  const groupConfig = await getGroupConfig();
+  await registerBotCommands(bot.api, groupConfig.groupChatId);
 
   await rescheduleFromConfig(bot.api);
   await rescheduleReminderFromConfig(bot.api);
