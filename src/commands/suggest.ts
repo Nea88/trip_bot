@@ -1,11 +1,13 @@
 import { InlineKeyboard, type Context } from "grammy";
 import {
   addSuggestion,
+  approveSuggestion,
   findByNormalizedText,
   normalizeSuggestionText,
 } from "../services/suggestions.js";
 import { notifyAdmins } from "../services/notifications.js";
 import { getGroupConfig } from "../services/groupConfig.js";
+import { isGroupAdmin } from "../services/adminAuth.js";
 import { validateSuggestionText } from "../utils/suggestionText.js";
 import { buildReviewCallbackData } from "./reviewSuggestion.js";
 
@@ -40,10 +42,19 @@ export async function suggestCommand(ctx: Context): Promise<void> {
   const userId = ctx.from!.id;
   const username = ctx.from!.username ?? ctx.from!.first_name ?? "кто-то";
 
+  const config = await getGroupConfig();
+  const isAdmin = await isGroupAdmin(ctx.api, config.groupChatId, userId);
+
   const suggestion = await addSuggestion(text, userId, username);
+
+  if (isAdmin) {
+    await approveSuggestion(suggestion.id);
+    await ctx.reply(`Добавлено предложение #${suggestion.seq}: ${text}`);
+    return;
+  }
+
   await ctx.reply("Ваш вариант отправлен на рассмотрение админу.");
 
-  const config = await getGroupConfig();
   const keyboard = new InlineKeyboard()
     .text("Одобрить", buildReviewCallbackData(suggestion.id, "approve"))
     .text("Отклонить", buildReviewCallbackData(suggestion.id, "reject"));
