@@ -14,6 +14,14 @@ import type { PollDocWithId } from "../types/index.js";
 
 const CALLBACK_PREFIX = "cp";
 
+async function unpinPollMessage(api: Api, groupChatId: number, messageId: number): Promise<void> {
+  try {
+    await api.unpinChatMessage(groupChatId, messageId);
+  } catch (err) {
+    console.error("[closePoll] Failed to unpin poll message:", err);
+  }
+}
+
 export async function closePollCommand(ctx: Context): Promise<void> {
   const config = await getGroupConfig();
   const openPoll = await getOpenPoll(config.groupChatId);
@@ -30,6 +38,7 @@ export async function closePollCommand(ctx: Context): Promise<void> {
       // Poll message was deleted (or is otherwise gone) — no way to get
       // results, so just close it out instead of leaving it stuck "open".
       await closeWithoutWinner(openPoll.id);
+      await unpinPollMessage(ctx.api, config.groupChatId, openPoll.messageId);
       await ctx.reply(
         "Не удалось найти сообщение с опросом (похоже, его удалили) — опрос закрыт без результатов, место не исключается.",
       );
@@ -37,6 +46,7 @@ export async function closePollCommand(ctx: Context): Promise<void> {
     }
     throw err;
   }
+  await unpinPollMessage(ctx.api, config.groupChatId, openPoll.messageId);
   const voterCounts = finalPoll.options.map((o) => o.voter_count);
   const winner = computeWinner(openPoll.optionSuggestionIds, voterCounts);
 

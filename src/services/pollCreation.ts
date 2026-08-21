@@ -39,5 +39,11 @@ export async function createPollIfPossible(
     optionSuggestionIds,
   );
 
+  try {
+    await api.pinChatMessage(groupChatId, message.message_id);
+  } catch (err) {
+    console.error("[pollCreation] Failed to pin poll message:", err);
+  }
+
   return { kind: "created", poll, optionCount: optionTexts.length };
 }
