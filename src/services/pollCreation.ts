@@ -23,7 +23,7 @@ export async function createPollIfPossible(
     return { kind: "no_suggestions" };
   }
 
-  const chosen = active.slice(0, MAX_REAL_POLL_OPTIONS);
+  const chosen = active.slice(-MAX_REAL_POLL_OPTIONS);
   const optionTexts = [...chosen.map((s) => s.text), MIMOKROKODIL_TEXT];
   const optionSuggestionIds: (string | null)[] = [...chosen.map((s) => s.id), null];
 
