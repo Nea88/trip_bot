@@ -8,6 +8,11 @@ const MIN_SUGGESTION_LENGTH = 3;
 // one real letter or digit (any script) somewhere in the text.
 const HAS_ALPHANUMERIC = /[\p{L}\p{N}]/u;
 
+// Lowercased/trimmed/whitespace-collapsed form, used for duplicate detection.
+export function normalizeSuggestionText(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
 /**
  * Returns an error message if the text isn't a valid suggestion, or null if
  * it's fine. Shared between /suggest and /edit so both reject the same junk:

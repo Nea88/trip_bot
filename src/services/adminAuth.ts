@@ -15,7 +15,15 @@ export async function isGroupAdmin(
     return cached.isAdmin;
   }
 
-  const member = await api.getChatMember(groupChatId, userId);
+  let member;
+  try {
+    member = await api.getChatMember(groupChatId, userId);
+  } catch (err) {
+    // Throws for users who never joined the group (and on transient API
+    // errors) — treat as non-admin, but don't cache so a blip isn't sticky.
+    console.error(`[adminAuth] getChatMember failed for user ${userId}:`, err);
+    return false;
+  }
   const isAdmin = ADMIN_STATUSES.has(member.status);
   cache.set(userId, { isAdmin, expiresAt: Date.now() + CACHE_TTL_MS });
   return isAdmin;

@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../firebase/firestore.js";
 import type { Suggestion, SuggestionWithId } from "../types/index.js";
+import { normalizeSuggestionText } from "../utils/suggestionText.js";
 
 const suggestions = db.collection("suggestions");
 const counterDoc = db.collection("counters").doc("suggestionSeq");
@@ -13,10 +14,6 @@ async function nextSeq(): Promise<number> {
     tx.set(counterDoc, { value: next }, { merge: true });
     return next;
   });
-}
-
-export function normalizeSuggestionText(text: string): string {
-  return text.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 export async function findByNormalizedText(
@@ -32,6 +29,7 @@ export async function addSuggestion(
   text: string,
   addedByUserId: number,
   addedByUsername: string,
+  addedByHasUsername: boolean,
 ): Promise<SuggestionWithId> {
   const seq = await nextSeq();
   const doc: Suggestion = {
@@ -40,6 +38,7 @@ export async function addSuggestion(
     textNormalized: normalizeSuggestionText(text),
     addedByUserId,
     addedByUsername,
+    addedByHasUsername,
     addedAt: FieldValue.serverTimestamp() as unknown as Suggestion["addedAt"],
     status: "pending",
     excludedAt: null,

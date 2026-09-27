@@ -4,9 +4,9 @@
 // real destination wins.
 export const MIMOKROKODIL_TEXT = "Мимокрокодил";
 
-// Telegram caps polls at 10 options; this bot additionally always reserves
-// one slot for the mandatory Мимокрокодил option.
-export const MAX_POLL_OPTIONS_TOTAL = 8;
+// Telegram caps polls at 10 options; one slot is always reserved for the
+// mandatory Мимокрокодил option, leaving 9 for real suggestions.
+export const MAX_POLL_OPTIONS_TOTAL = 10;
 export const MAX_REAL_POLL_OPTIONS = MAX_POLL_OPTIONS_TOTAL - 1;
 
 // Default text for the every-other-day reminder to suggest a destination; overridable

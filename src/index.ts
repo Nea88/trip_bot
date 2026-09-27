@@ -2,13 +2,24 @@ import http from "node:http";
 import { createBot } from "./bot/bot.js";
 import { env } from "./config/env.js";
 import { rescheduleFromConfig, rescheduleReminderFromConfig } from "./scheduler/scheduler.js";
-import { getPollsWithPendingResult } from "./services/polls.js";
+import { getPollsWithUnpostedPendingResult } from "./services/polls.js";
 import { postPendingResultMessage } from "./commands/closePoll.js";
 import { registerBotCommands } from "./bot/commands.js";
 import { getGroupConfig } from "./services/groupConfig.js";
 
+// Long polling holds each getUpdates call open for up to 30s, so a healthy
+// bot completes one well within this window.
+const HEALTHY_POLL_WINDOW_MS = 90_000;
+
 async function main(): Promise<void> {
   const bot = createBot();
+
+  let lastSuccessfulPollAt = 0;
+  bot.api.config.use(async (prev, method, payload, signal) => {
+    const result = await prev(method, payload, signal);
+    if (method === "getUpdates" && result.ok) lastSuccessfulPollAt = Date.now();
+    return result;
+  });
 
   await bot.init();
 
@@ -18,16 +29,22 @@ async function main(): Promise<void> {
   await rescheduleFromConfig(bot.api);
   await rescheduleReminderFromConfig(bot.api);
 
-  const pending = await getPollsWithPendingResult();
+  const pending = await getPollsWithUnpostedPendingResult();
   for (const poll of pending) {
-    await postPendingResultMessage(bot.api, poll);
+    try {
+      await postPendingResultMessage(bot.api, poll);
+    } catch (err) {
+      console.error(`[startup] Failed to post pending result for poll ${poll.id}:`, err);
+    }
   }
 
   if (env.port) {
     http
       .createServer((_req, res) => {
-        res.writeHead(200);
-        res.end("ok");
+        const healthy =
+          bot.isRunning() && Date.now() - lastSuccessfulPollAt < HEALTHY_POLL_WINDOW_MS;
+        res.writeHead(healthy ? 200 : 503);
+        res.end(healthy ? "ok" : "unhealthy");
       })
       .listen(env.port, () => {
         console.log(`[http] Healthcheck server listening on port ${env.port}`);

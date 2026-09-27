@@ -15,11 +15,14 @@ export async function getOpenPoll(groupChatId: number): Promise<PollDocWithId | 
   return { id: doc.id, ...(doc.data() as PollDoc) };
 }
 
-export async function getPollsWithPendingResult(): Promise<PollDocWithId[]> {
+// Pending results whose confirmation message was never posted (e.g. the bot
+// died right after stopPoll). Ones already posted are skipped so restarts
+// don't spam the group with duplicate confirmation messages.
+export async function getPollsWithUnpostedPendingResult(): Promise<PollDocWithId[]> {
   const snap = await polls.where("status", "==", "closed").get();
   return snap.docs
     .map((doc) => ({ id: doc.id, ...(doc.data() as PollDoc) }))
-    .filter((poll) => poll.pendingResult !== null);
+    .filter((poll) => poll.pendingResult !== null && poll.pendingResultMessageId == null);
 }
 
 export async function createPoll(
@@ -38,21 +41,45 @@ export async function createPoll(
     status: "open",
     winnerSuggestionId: null,
     pendingResult: null,
+    pendingResultMessageId: null,
   };
   const ref = await polls.add(doc);
   const snap = await ref.get();
   return { id: ref.id, ...(snap.data() as PollDoc) };
 }
 
+/**
+ * Atomically flips an open poll to "closed". Returns false if someone else
+ * already closed it — callers must bail out then, so two concurrent
+ * /close_poll (or /cancel_poll) runs can't both process the same poll.
+ */
+export async function claimOpenPoll(pollId: string): Promise<boolean> {
+  const ref = polls.doc(pollId);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || (snap.data() as PollDoc).status !== "open") return false;
+    tx.update(ref, { status: "closed", closedAt: FieldValue.serverTimestamp() });
+    return true;
+  });
+}
+
+// Undoes claimOpenPoll when stopping the Telegram poll failed transiently.
+export async function reopenPoll(pollId: string): Promise<void> {
+  await polls.doc(pollId).update({ status: "open", closedAt: null });
+}
+
 export async function setPendingResult(
   pollId: string,
   pendingResult: PendingResult,
 ): Promise<void> {
-  await polls.doc(pollId).update({
-    status: "closed",
-    closedAt: FieldValue.serverTimestamp(),
-    pendingResult,
-  });
+  await polls.doc(pollId).update({ pendingResult, pendingResultMessageId: null });
+}
+
+export async function setPendingResultMessageId(
+  pollId: string,
+  messageId: number,
+): Promise<void> {
+  await polls.doc(pollId).update({ pendingResultMessageId: messageId });
 }
 
 export async function closeWithoutWinner(pollId: string): Promise<void> {
@@ -64,20 +91,21 @@ export async function closeWithoutWinner(pollId: string): Promise<void> {
   });
 }
 
-export async function finalizeWinner(
+/**
+ * Atomically resolves a pending result: records the winner (or null when
+ * cancelled) and clears pendingResult. Returns false if it was already
+ * resolved — e.g. a double tap or two admins pressing buttons at once.
+ */
+export async function resolvePendingResult(
   pollId: string,
-  winnerSuggestionId: string,
-): Promise<void> {
-  await polls.doc(pollId).update({
-    winnerSuggestionId,
-    pendingResult: null,
-  });
-}
-
-export async function cancelPendingResult(pollId: string): Promise<void> {
-  await polls.doc(pollId).update({
-    winnerSuggestionId: null,
-    pendingResult: null,
+  winnerSuggestionId: string | null,
+): Promise<boolean> {
+  const ref = polls.doc(pollId);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists || (snap.data() as PollDoc).pendingResult === null) return false;
+    tx.update(ref, { winnerSuggestionId, pendingResult: null });
+    return true;
   });
 }
 

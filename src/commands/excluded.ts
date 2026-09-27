@@ -1,5 +1,6 @@
 import type { Context } from "grammy";
 import { listExcludedSuggestions } from "../services/suggestions.js";
+import { chunkLines } from "../utils/messageChunks.js";
 
 export async function excludedCommand(ctx: Context): Promise<void> {
   const excluded = await listExcludedSuggestions();
@@ -12,5 +13,7 @@ export async function excludedCommand(ctx: Context): Promise<void> {
     const date = s.excludedAt?.toDate().toLocaleDateString("ru-RU") ?? "?";
     return `#${s.seq}: ${s.text} (исключено ${date})`;
   });
-  await ctx.reply(lines.join("\n"));
+  for (const chunk of chunkLines(lines)) {
+    await ctx.reply(chunk);
+  }
 }

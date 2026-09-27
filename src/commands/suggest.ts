@@ -3,12 +3,12 @@ import {
   addSuggestion,
   approveSuggestion,
   findByNormalizedText,
-  normalizeSuggestionText,
 } from "../services/suggestions.js";
 import { notifyAdmins } from "../services/notifications.js";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { isGroupAdmin } from "../services/adminAuth.js";
-import { validateSuggestionText } from "../utils/suggestionText.js";
+import { normalizeSuggestionText, validateSuggestionText } from "../utils/suggestionText.js";
+import { formatUserName } from "../utils/userName.js";
 import { buildReviewCallbackData } from "./reviewSuggestion.js";
 
 export async function suggestCommand(ctx: Context): Promise<void> {
@@ -40,12 +40,13 @@ export async function suggestCommand(ctx: Context): Promise<void> {
   }
 
   const userId = ctx.from!.id;
+  const hasUsername = Boolean(ctx.from!.username);
   const username = ctx.from!.username ?? ctx.from!.first_name ?? "кто-то";
 
   const config = await getGroupConfig();
   const isAdmin = await isGroupAdmin(ctx.api, config.groupChatId, userId);
 
-  const suggestion = await addSuggestion(text, userId, username);
+  const suggestion = await addSuggestion(text, userId, username, hasUsername);
 
   if (isAdmin) {
     await approveSuggestion(suggestion.id);
@@ -62,7 +63,7 @@ export async function suggestCommand(ctx: Context): Promise<void> {
   await notifyAdmins(
     ctx.api,
     config.groupChatId,
-    `Новое предложение маршрута от @${username}:\n#${suggestion.seq}: ${text}`,
+    `Новое предложение маршрута от ${formatUserName(username, hasUsername)}:\n#${suggestion.seq}: ${text}`,
     keyboard,
   );
 }

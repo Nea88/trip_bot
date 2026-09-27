@@ -11,7 +11,11 @@ export interface Suggestion {
   // Lowercased/trimmed/whitespace-collapsed text, used for duplicate detection.
   textNormalized: string;
   addedByUserId: number;
+  // Telegram username, or the first name when the user has none.
   addedByUsername: string;
+  // false when addedByUsername is a first name; missing on suggestions added
+  // before this field existed (treated as a real username).
+  addedByHasUsername?: boolean;
   addedAt: Timestamp;
   status: SuggestionStatus;
   excludedAt: Timestamp | null;
@@ -42,6 +46,9 @@ export interface PollDoc {
   status: PollStatus;
   winnerSuggestionId: string | null;
   pendingResult: PendingResult | null;
+  // Message with the confirm/cancel buttons for pendingResult; missing on
+  // polls closed before this field existed.
+  pendingResultMessageId?: number | null;
 }
 
 export interface PollDocWithId extends PollDoc {

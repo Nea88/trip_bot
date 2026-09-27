@@ -8,6 +8,16 @@ import { DEFAULT_REMINDER_TEXT } from "../constants.js";
 let currentPollTask: ScheduledTask | null = null;
 let currentReminderTask: ScheduledTask | null = null;
 
+// A rejected promise from a cron tick would be an unhandled rejection, which
+// crashes the whole process — log it instead and wait for the next tick.
+async function runSafely(name: string, job: () => Promise<void>): Promise<void> {
+  try {
+    await job();
+  } catch (err) {
+    console.error(`[scheduler] ${name} failed:`, err);
+  }
+}
+
 async function runScheduledPollCreation(api: Api): Promise<void> {
   const config = await getGroupConfig();
   const result = await createPollIfPossible(api, config.groupChatId);
@@ -34,7 +44,7 @@ export async function rescheduleFromConfig(api: Api): Promise<void> {
   const [hour, minute] = config.scheduleTime.split(":").map(Number);
   const expression = `${minute} ${hour} * * ${config.scheduleDay}`;
 
-  currentPollTask = schedule(expression, () => runScheduledPollCreation(api), {
+  currentPollTask = schedule(expression, () => runSafely("poll creation", () => runScheduledPollCreation(api)), {
     timezone: config.timezone,
   });
 }
@@ -77,7 +87,7 @@ export async function rescheduleReminderFromConfig(api: Api): Promise<void> {
   const [hour, minute] = config.reminderTime.split(":").map(Number);
   const expression = `${minute} ${hour} * * *`;
 
-  currentReminderTask = schedule(expression, () => runReminder(api), {
+  currentReminderTask = schedule(expression, () => runSafely("reminder", () => runReminder(api)), {
     timezone: config.reminderTimezone,
   });
 }

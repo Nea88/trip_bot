@@ -5,7 +5,23 @@ import { env } from "../config/env.js";
 
 const configDoc = db.collection("config").doc("main");
 
+// This process is the only writer of the config doc, so an in-memory copy
+// stays accurate as long as every setter below drops it. Saves a Firestore
+// read (sometimes several) on every command.
+let cached: GroupConfig | null = null;
+
 export async function getGroupConfig(): Promise<GroupConfig> {
+  if (!cached) cached = await loadGroupConfig();
+  return cached;
+}
+
+async function updateConfig(fields: Record<string, unknown>): Promise<void> {
+  await configDoc.set({ ...fields, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+  // Drop after the write, so a read that raced with it can't re-cache stale data.
+  cached = null;
+}
+
+async function loadGroupConfig(): Promise<GroupConfig> {
   const snap = await configDoc.get();
   if (!snap.exists) {
     const seeded: GroupConfig = {
@@ -44,38 +60,17 @@ export async function setSchedule(
   time: string,
   timezone: string,
 ): Promise<void> {
-  await configDoc.set(
-    {
-      scheduleDay: day,
-      scheduleTime: time,
-      timezone,
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+  await updateConfig({ scheduleDay: day, scheduleTime: time, timezone });
 }
 
 export async function setReminderSchedule(time: string, timezone: string): Promise<void> {
-  await configDoc.set(
-    {
-      reminderTime: time,
-      reminderTimezone: timezone,
-      updatedAt: FieldValue.serverTimestamp(),
-    },
-    { merge: true },
-  );
+  await updateConfig({ reminderTime: time, reminderTimezone: timezone });
 }
 
 export async function setReminderText(text: string): Promise<void> {
-  await configDoc.set(
-    { reminderText: text, updatedAt: FieldValue.serverTimestamp() },
-    { merge: true },
-  );
+  await updateConfig({ reminderText: text });
 }
 
 export async function markReminderSent(isoDate: string): Promise<void> {
-  await configDoc.set(
-    { lastReminderSentDate: isoDate, updatedAt: FieldValue.serverTimestamp() },
-    { merge: true },
-  );
+  await updateConfig({ lastReminderSentDate: isoDate });
 }
