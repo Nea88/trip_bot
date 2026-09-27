@@ -2,6 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../firebase/firestore.js";
 import type { Suggestion, SuggestionWithId } from "../types/index.js";
 import { normalizeSuggestionText } from "../utils/suggestionText.js";
+import { deleteAllForSuggestion } from "./placePhotos.js";
 
 const suggestions = db.collection("suggestions");
 const counterDoc = db.collection("counters").doc("suggestionSeq");
@@ -81,6 +82,7 @@ export async function editSuggestionText(id: string, newText: string): Promise<v
 }
 
 export async function deleteSuggestion(id: string): Promise<void> {
+  await deleteAllForSuggestion(id);
   await suggestions.doc(id).delete();
 }
 

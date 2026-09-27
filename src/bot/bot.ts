@@ -21,9 +21,19 @@ import { excludedCommand } from "../commands/excluded.js";
 import { startCommand } from "../commands/start.js";
 import { helpCommand } from "../commands/help.js";
 import { reviewCallback, reviewCallbackPattern } from "../commands/reviewSuggestion.js";
+import {
+  photoCommand,
+  photoReviewCallback,
+  photoReviewCallbackPattern,
+  unphotoCommand,
+} from "../commands/photo.js";
+import { placeCommand } from "../commands/place.js";
+import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
 
 export function createBot(): Bot {
   const bot = new Bot(env.botToken);
+
+  bot.use(rememberAlbumPhotos);
 
   bot.command("start", requireDM, startCommand);
   bot.command("help", helpCommand);
@@ -31,6 +41,9 @@ export function createBot(): Bot {
   bot.command("suggest", requireGroupChat, suggestCommand);
 
   bot.command("list", requireGroupChat, listCommand);
+  bot.command("photo", requireGroupChat, photoCommand);
+  bot.command("place", requireGroupChat, placeCommand);
+  bot.command("unphoto", requireAdmin, requireGroupChat, unphotoCommand);
   bot.command("edit", requireAdmin, editCommand);
   bot.command("delete", requireAdmin, deleteCommand);
   bot.command("create_poll", requireAdmin, createPollCommand);
@@ -49,6 +62,7 @@ export function createBot(): Bot {
   bot.callbackQuery(deleteCallbackPattern, requireAdmin, deleteCallback);
   bot.callbackQuery(closePollCallbackPattern, requireAdmin, closePollCallback);
   bot.callbackQuery(reviewCallbackPattern, requireAdmin, reviewCallback);
+  bot.callbackQuery(photoReviewCallbackPattern, requireAdmin, photoReviewCallback);
 
   bot.catch((err) => {
     console.error("[bot] Unhandled error:", err);

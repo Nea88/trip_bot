@@ -171,7 +171,7 @@ export async function closePollCallback(ctx: CallbackQueryContext<Context>): Pro
   await ctx.answerCallbackQuery();
   await ctx.api.sendMessage(
     poll.groupChatId,
-    `Едем в: "${suggestion.text}"! Хорошей поездки!`,
+    `Едем в: "${suggestion.text}"! Хорошей поездки!\n\nПосле поездки ответьте на фото командой /photo ${suggestion.seq} — они сохранятся в архиве места (/place ${suggestion.seq}).`,
   );
 }
 

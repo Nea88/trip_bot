@@ -109,6 +109,14 @@ export async function resolvePendingResult(
   });
 }
 
+// Polls this place won, oldest first — i.e. the trips made there.
+export async function listWinsForSuggestion(suggestionId: string): Promise<PollDocWithId[]> {
+  const snap = await polls.where("winnerSuggestionId", "==", suggestionId).get();
+  return snap.docs
+    .map((doc) => ({ id: doc.id, ...(doc.data() as PollDoc) }))
+    .sort((a, b) => (a.closedAt?.toMillis() ?? 0) - (b.closedAt?.toMillis() ?? 0));
+}
+
 export async function getPollById(pollId: string): Promise<PollDocWithId | null> {
   const snap = await polls.doc(pollId).get();
   if (!snap.exists) return null;

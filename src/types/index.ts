@@ -21,9 +21,37 @@ export interface Suggestion {
   excludedAt: Timestamp | null;
   restoredAt: Timestamp | null;
   rejectedAt: Timestamp | null;
+  // Approved trip photos attached to this place; missing means 0.
+  photoCount?: number;
 }
 
 export interface SuggestionWithId extends Suggestion {
+  id: string;
+}
+
+// Photos from past trips, attached to a place via /photo. Non-admin
+// submissions start "pending" and are approved/rejected by an admin as a
+// whole batch (one /photo = one batch, e.g. a whole album).
+export type PlacePhotoStatus = "pending" | "approved" | "rejected";
+
+export interface PlacePhoto {
+  suggestionId: string;
+  // Telegram keeps the file; fileId is enough to send it again.
+  fileId: string;
+  // Stable across re-sends — used for de-duplication and /unphoto.
+  fileUniqueId: string;
+  sourceChatId: number;
+  sourceMessageId: number;
+  batchId: string;
+  addedByUserId: number;
+  addedByUsername: string;
+  addedByHasUsername: boolean;
+  addedAt: Timestamp;
+  status: PlacePhotoStatus;
+  reviewedAt: Timestamp | null;
+}
+
+export interface PlacePhotoWithId extends PlacePhoto {
   id: string;
 }
 

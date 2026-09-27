@@ -1,11 +1,7 @@
 import type { Context } from "grammy";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { getOpenPoll } from "../services/polls.js";
-
-function buildPollLink(groupChatId: number, messageId: number): string {
-  const internalId = String(groupChatId).replace(/^-100/, "");
-  return `https://t.me/c/${internalId}/${messageId}`;
-}
+import { buildMessageLink } from "../utils/photoMessage.js";
 
 export async function getOpenPollCommand(ctx: Context): Promise<void> {
   const config = await getGroupConfig();
@@ -16,5 +12,5 @@ export async function getOpenPollCommand(ctx: Context): Promise<void> {
     return;
   }
 
-  await ctx.reply(buildPollLink(config.groupChatId, poll.messageId));
+  await ctx.reply(buildMessageLink(config.groupChatId, poll.messageId));
 }

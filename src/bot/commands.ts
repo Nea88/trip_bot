@@ -7,6 +7,8 @@ const START: BotCommand = { command: "start", description: "Подписатьс
 const HELP: BotCommand = { command: "help", description: "Список команд" };
 const SUGGEST: BotCommand = { command: "suggest", description: "Предложить вариант маршрута" };
 const LIST: BotCommand = { command: "list", description: "Текущие варианты маршрутов" };
+const PHOTO: BotCommand = { command: "photo", description: "Прикрепить фото (ответом) к месту" };
+const PLACE: BotCommand = { command: "place", description: "Фото и поездки по месту" };
 
 const ADMIN_ONLY: BotCommand[] = [
   { command: "edit", description: "Изменить текст варианта" },
@@ -24,11 +26,14 @@ const ADMIN_ONLY: BotCommand[] = [
 ];
 
 const PRIVATE_COMMANDS: BotCommand[] = [START, HELP];
-const GROUP_COMMANDS: BotCommand[] = [SUGGEST, LIST, HELP];
+const GROUP_COMMANDS: BotCommand[] = [SUGGEST, LIST, PHOTO, PLACE, HELP];
 const GROUP_ADMIN_COMMANDS: BotCommand[] = [
   SUGGEST,
   LIST,
+  PHOTO,
+  PLACE,
   ...ADMIN_ONLY,
+  { command: "unphoto", description: "Убрать фото (ответом) из архива" },
   { command: "close_poll", description: "Закрыть опрос и зафиксировать победителя" },
   { command: "cancel_poll", description: "Закрыть опрос без подсчёта результатов" },
   HELP,
