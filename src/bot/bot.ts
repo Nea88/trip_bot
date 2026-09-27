@@ -66,8 +66,15 @@ export function createBot(): Bot {
   bot.callbackQuery(reviewCallbackPattern, requireAdmin, reviewCallback);
   bot.callbackQuery(photoReviewCallbackPattern, requireAdmin, photoReviewCallback);
 
-  bot.catch((err) => {
-    console.error("[bot] Unhandled error:", err);
+  bot.catch(async (err) => {
+    // Log only the cause: the BotError itself carries ctx.api, and printing it
+    // dumps the bot token into the logs.
+    console.error(`[bot] Unhandled error in update ${err.ctx.update.update_id}:`, err.error);
+    try {
+      await err.ctx.reply("Что-то пошло не так. Попробуйте ещё раз позже.");
+    } catch {
+      // Nowhere to reply (or Telegram is down) — the log above is enough.
+    }
   });
 
   return bot;

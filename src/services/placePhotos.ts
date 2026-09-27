@@ -100,13 +100,14 @@ export async function resolveBatch(
   });
 }
 
+// Filtered and sorted in memory: a place has few items, and this way the
+// query needs no composite Firestore index.
 export async function listApprovedForSuggestion(suggestionId: string): Promise<PlacePhotoWithId[]> {
-  const snap = await placePhotos
-    .where("suggestionId", "==", suggestionId)
-    .where("status", "==", "approved")
-    .orderBy("addedAt", "asc")
-    .get();
-  return snap.docs.map(withId);
+  const snap = await placePhotos.where("suggestionId", "==", suggestionId).get();
+  return snap.docs
+    .map(withId)
+    .filter((photo) => photo.status === "approved")
+    .sort((a, b) => a.addedAt.toMillis() - b.addedAt.toMillis());
 }
 
 /**
