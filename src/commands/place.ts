@@ -3,7 +3,7 @@ import { getBySeq } from "../services/suggestions.js";
 import { listApprovedForSuggestion } from "../services/placePhotos.js";
 import { listWinsForSuggestion } from "../services/polls.js";
 import { chunkLines } from "../utils/messageChunks.js";
-import { sendPhotoAlbums } from "../utils/photoMessage.js";
+import { describeItems, sendPlaceItems } from "../utils/photoMessage.js";
 import { formatUserName } from "../utils/userName.js";
 import type { SuggestionStatus } from "../types/index.js";
 
@@ -43,12 +43,12 @@ export async function placeCommand(ctx: Context): Promise<void> {
   lines.push(tripDates.length > 0 ? `Поездки: ${tripDates.join(", ")}` : "Поездок сюда через бота ещё не было.");
 
   if (photos.length === 0) {
-    lines.push(`Фото пока нет. Добавить: ответьте на фото командой /photo ${seq}`);
+    lines.push(`Архив пока пуст. Добавить: ответьте на фото или сообщение командой /photo ${seq}`);
   } else {
     const authors = [
       ...new Set(photos.map((p) => formatUserName(p.addedByUsername, p.addedByHasUsername))),
     ];
-    lines.push(`Фото: ${photos.length} (добавили: ${authors.join(", ")})`);
+    lines.push(`В архиве: ${describeItems(photos)} (добавили: ${authors.join(", ")})`);
     if (photos.length > MAX_SHOWN_PHOTOS) {
       lines.push(`Показаны последние ${MAX_SHOWN_PHOTOS} из ${photos.length}.`);
     }
@@ -59,14 +59,14 @@ export async function placeCommand(ctx: Context): Promise<void> {
   }
 
   if (photos.length === 0) return;
+  let failed = 0;
   try {
-    await sendPhotoAlbums(
-      ctx.api,
-      ctx.chat!.id,
-      photos.slice(-MAX_SHOWN_PHOTOS).map((p) => p.fileId),
-    );
+    failed = await sendPlaceItems(ctx.api, ctx.chat!.id, photos.slice(-MAX_SHOWN_PHOTOS));
   } catch (err) {
     console.error(`[place] Failed to send photos for #${seq}:`, err);
-    await ctx.reply("Не удалось отправить часть фото.");
+    failed = 1;
+  }
+  if (failed > 0) {
+    await ctx.reply("Не удалось показать часть архива — возможно, исходные сообщения удалили.");
   }
 }

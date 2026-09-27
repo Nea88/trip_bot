@@ -29,17 +29,19 @@ export interface SuggestionWithId extends Suggestion {
   id: string;
 }
 
-// Photos from past trips, attached to a place via /photo. Non-admin
+// Photos (or any other messages) from past trips, attached to a place via /photo. Non-admin
 // submissions start "pending" and are approved/rejected by an admin as a
 // whole batch (one /photo = one batch, e.g. a whole album).
 export type PlacePhotoStatus = "pending" | "approved" | "rejected";
 
 export interface PlacePhoto {
   suggestionId: string;
-  // Telegram keeps the file; fileId is enough to send it again.
-  fileId: string;
+  // Telegram keeps the file; fileId is enough to send it again. Both are null
+  // for a non-photo message (text, video, file…), which is shown by copying
+  // the source message instead.
+  fileId: string | null;
   // Stable across re-sends — used for de-duplication and /unphoto.
-  fileUniqueId: string;
+  fileUniqueId: string | null;
   sourceChatId: number;
   sourceMessageId: number;
   batchId: string;

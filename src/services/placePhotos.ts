@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../firebase/firestore.js";
 import type { PlacePhoto, PlacePhotoStatus, PlacePhotoWithId } from "../types/index.js";
+import { placeItemKey } from "../utils/replyItems.js";
 
 const placePhotos = db.collection("placePhotos");
 const suggestions = db.collection("suggestions");
@@ -8,12 +9,8 @@ const suggestions = db.collection("suggestions");
 // Firestore caps a write batch at 500 operations.
 const MAX_BATCH_WRITES = 500;
 
-export interface NewPlacePhoto {
-  fileId: string;
-  fileUniqueId: string;
-  sourceChatId: number;
-  sourceMessageId: number;
-}
+export type { NewPlacePhoto } from "../utils/replyItems.js";
+import type { NewPlacePhoto } from "../utils/replyItems.js";
 
 export interface PhotoAuthor {
   userId: number;
@@ -25,15 +22,15 @@ function withId(doc: FirebaseFirestore.QueryDocumentSnapshot): PlacePhotoWithId 
   return { id: doc.id, ...(doc.data() as PlacePhoto) };
 }
 
-// Status of photos already attached to (or submitted for) this place, keyed
-// by fileUniqueId — so the same photo can't be added twice.
+// Status of items already attached to (or submitted for) this place, keyed by
+// placeItemKey — so the same photo or message can't be added twice.
 export async function getExistingStatuses(
   suggestionId: string,
 ): Promise<Map<string, PlacePhotoStatus>> {
   const snap = await placePhotos.where("suggestionId", "==", suggestionId).get();
   return new Map(snap.docs.map((doc) => {
     const photo = doc.data() as PlacePhoto;
-    return [photo.fileUniqueId, photo.status];
+    return [placeItemKey(photo), photo.status];
   }));
 }
 
@@ -77,7 +74,7 @@ export async function addPhotoBatch(
 export async function resolveBatch(
   batchId: string,
   approve: boolean,
-): Promise<{ suggestionId: string; count: number } | null> {
+): Promise<{ suggestionId: string; items: { fileId: string | null }[] } | null> {
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(placePhotos.where("batchId", "==", batchId));
     const pending = snap.docs.filter((doc) => (doc.data() as PlacePhoto).status === "pending");
@@ -96,7 +93,10 @@ export async function resolveBatch(
     if (approve && suggestionSnap.exists) {
       tx.update(suggestionRef, { photoCount: FieldValue.increment(pending.length) });
     }
-    return { suggestionId, count: pending.length };
+    return {
+      suggestionId,
+      items: pending.map((doc) => ({ fileId: (doc.data() as PlacePhoto).fileId })),
+    };
   });
 }
 
@@ -135,10 +135,19 @@ export async function getFirstApprovedPhotoSources(): Promise<
  * Returns how many attachments were removed.
  */
 export async function removeApprovedByFileUniqueId(fileUniqueId: string): Promise<number> {
+  return removeApproved(placePhotos.where("fileUniqueId", "==", fileUniqueId));
+}
+
+// Same for a non-photo message, identified by where it was posted.
+export async function removeApprovedBySource(chatId: number, messageId: number): Promise<number> {
+  return removeApproved(
+    placePhotos.where("sourceChatId", "==", chatId).where("sourceMessageId", "==", messageId),
+  );
+}
+
+async function removeApproved(query: FirebaseFirestore.Query): Promise<number> {
   return db.runTransaction(async (tx) => {
-    const snap = await tx.get(
-      placePhotos.where("fileUniqueId", "==", fileUniqueId).where("status", "==", "approved"),
-    );
+    const snap = await tx.get(query.where("status", "==", "approved"));
     const suggestionRefs = snap.docs.map((doc) =>
       suggestions.doc((doc.data() as PlacePhoto).suggestionId),
     );

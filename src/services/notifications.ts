@@ -1,7 +1,7 @@
 import type { Api, InlineKeyboard } from "grammy";
 import { isGroupAdmin } from "./adminAuth.js";
 import { getAllRegistrations } from "./registrations.js";
-import { sendPhotoAlbums } from "../utils/photoMessage.js";
+import { sendPlaceItems, type PlaceItemRef } from "../utils/photoMessage.js";
 
 // Runs `send` for the DM of every registered user who is still a group admin.
 async function forEachAdminDm(
@@ -34,17 +34,17 @@ export async function notifyAdmins(
   });
 }
 
-// Albums can't carry buttons, so the photos go first and the text with the
+// Albums can't carry buttons, so the items go first and the text with the
 // keyboard follows right after them.
-export async function notifyAdminsWithPhotos(
+export async function notifyAdminsWithItems(
   api: Api,
   groupChatId: number,
-  fileIds: string[],
+  items: PlaceItemRef[],
   text: string,
   keyboard: InlineKeyboard,
 ): Promise<void> {
   await forEachAdminDm(api, groupChatId, async (dmChatId) => {
-    await sendPhotoAlbums(api, dmChatId, fileIds);
+    await sendPlaceItems(api, dmChatId, items);
     await api.sendMessage(dmChatId, text, { reply_markup: keyboard });
   });
 }
