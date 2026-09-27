@@ -28,6 +28,7 @@ import {
   unphotoCommand,
 } from "../commands/photo.js";
 import { placeCommand } from "../commands/place.js";
+import { historyCommand } from "../commands/history.js";
 import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
 
 export function createBot(): Bot {
@@ -43,6 +44,7 @@ export function createBot(): Bot {
   bot.command("list", requireGroupChat, listCommand);
   bot.command("photo", requireGroupChat, photoCommand);
   bot.command("place", requireGroupChat, placeCommand);
+  bot.command("history", requireGroupChat, historyCommand);
   bot.command("unphoto", requireAdmin, requireGroupChat, unphotoCommand);
   bot.command("edit", requireAdmin, editCommand);
   bot.command("delete", requireAdmin, deleteCommand);

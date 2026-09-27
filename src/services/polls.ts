@@ -109,6 +109,11 @@ export async function resolvePendingResult(
   });
 }
 
+export async function listClosedPolls(): Promise<PollDocWithId[]> {
+  const snap = await polls.where("status", "==", "closed").get();
+  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as PollDoc) }));
+}
+
 // Polls this place won, oldest first — i.e. the trips made there.
 export async function listWinsForSuggestion(suggestionId: string): Promise<PollDocWithId[]> {
   const snap = await polls.where("winnerSuggestionId", "==", suggestionId).get();

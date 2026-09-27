@@ -110,6 +110,27 @@ export async function listApprovedForSuggestion(suggestionId: string): Promise<P
 }
 
 /**
+ * For every place with approved photos, where its earliest photo was posted —
+ * used to link each place to its photos in the group.
+ */
+export async function getFirstApprovedPhotoSources(): Promise<
+  Map<string, { chatId: number; messageId: number }>
+> {
+  const snap = await placePhotos.where("status", "==", "approved").get();
+  const earliest = new Map<string, PlacePhoto>();
+  for (const doc of snap.docs) {
+    const photo = doc.data() as PlacePhoto;
+    const current = earliest.get(photo.suggestionId);
+    if (!current || photo.addedAt.toMillis() < current.addedAt.toMillis()) {
+      earliest.set(photo.suggestionId, photo);
+    }
+  }
+  return new Map(
+    [...earliest].map(([id, p]) => [id, { chatId: p.sourceChatId, messageId: p.sourceMessageId }]),
+  );
+}
+
+/**
  * Removes an approved photo from every place it's attached to (/unphoto).
  * Returns how many attachments were removed.
  */

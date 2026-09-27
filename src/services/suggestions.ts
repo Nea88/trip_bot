@@ -59,6 +59,11 @@ export async function listActiveSuggestions(): Promise<SuggestionWithId[]> {
   return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Suggestion) }));
 }
 
+export async function listAllSuggestions(): Promise<SuggestionWithId[]> {
+  const snap = await suggestions.get();
+  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Suggestion) }));
+}
+
 export async function listExcludedSuggestions(): Promise<SuggestionWithId[]> {
   const snap = await suggestions
     .where("status", "==", "excluded")
