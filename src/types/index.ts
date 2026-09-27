@@ -37,8 +37,8 @@ export type PlacePhotoStatus = "pending" | "approved" | "rejected";
 export interface PlacePhoto {
   suggestionId: string;
   // Telegram keeps the file; fileId is enough to send it again. Both are null
-  // for a non-photo message (text, video, file…), which is shown by copying
-  // the source message instead.
+  // for a non-photo message (text, video, file…), which is known only by its
+  // source message.
   fileId: string | null;
   // Stable across re-sends — used for de-duplication and /unphoto.
   fileUniqueId: string | null;

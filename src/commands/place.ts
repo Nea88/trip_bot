@@ -3,12 +3,13 @@ import { getBySeq } from "../services/suggestions.js";
 import { listApprovedForSuggestion } from "../services/placePhotos.js";
 import { listWinsForSuggestion } from "../services/polls.js";
 import { chunkLines } from "../utils/messageChunks.js";
-import { describeItems, sendPlaceItems } from "../utils/photoMessage.js";
-import { formatUserName } from "../utils/userName.js";
+import { describeItems } from "../utils/photoMessage.js";
+import { groupArchive } from "../utils/placeArchive.js";
+import { escapeHtml } from "../utils/html.js";
 import type { SuggestionStatus } from "../types/index.js";
 
-// Keeps /place from flooding the chat; the newest photos are the ones shown.
-const MAX_SHOWN_PHOTOS = 50;
+// Keeps /place readable; the newest entries are the ones shown.
+const MAX_SHOWN_ENTRIES = 30;
 
 const STATUS_LABELS: Record<SuggestionStatus, string> = {
   active: "в пуле вариантов",
@@ -36,7 +37,10 @@ export async function placeCommand(ctx: Context): Promise<void> {
     listWinsForSuggestion(suggestion.id),
   ]);
 
-  const lines = [`#${seq}: ${suggestion.text}`, `Статус: ${STATUS_LABELS[suggestion.status]}`];
+  const lines = [
+    `#${seq}: ${escapeHtml(suggestion.text)}`,
+    `Статус: ${STATUS_LABELS[suggestion.status]}`,
+  ];
   const tripDates = wins
     .map((poll) => poll.closedAt?.toDate().toLocaleDateString("ru-RU"))
     .filter((date): date is string => Boolean(date));
@@ -45,28 +49,23 @@ export async function placeCommand(ctx: Context): Promise<void> {
   if (photos.length === 0) {
     lines.push(`Архив пока пуст. Добавить: ответьте на фото или сообщение командой /photo ${seq}`);
   } else {
-    const authors = [
-      ...new Set(photos.map((p) => formatUserName(p.addedByUsername, p.addedByHasUsername))),
-    ];
-    lines.push(`В архиве: ${describeItems(photos)} (добавили: ${authors.join(", ")})`);
-    if (photos.length > MAX_SHOWN_PHOTOS) {
-      lines.push(`Показаны последние ${MAX_SHOWN_PHOTOS} из ${photos.length}.`);
+    // Links to the original messages in the group — one per /photo, so an
+    // album is a single link.
+    const entries = groupArchive(
+      photos.map((p) => ({ ...p, addedAt: p.addedAt.toDate(), addedByHasUsername: p.addedByHasUsername !== false })),
+    );
+    const shown = entries.slice(-MAX_SHOWN_ENTRIES);
+    lines.push("", `В архиве: ${describeItems(photos)}`);
+    if (shown.length < entries.length) {
+      lines.push(`Показаны последние ${shown.length} из ${entries.length} записей.`);
     }
+    shown.forEach((entry, i) => {
+      const date = entry.date.toLocaleDateString("ru-RU");
+      lines.push(`${i + 1}. ${date} — <a href="${entry.link}">${entry.what}</a> от ${escapeHtml(entry.author)}`);
+    });
   }
 
   for (const chunk of chunkLines(lines)) {
-    await ctx.reply(chunk);
-  }
-
-  if (photos.length === 0) return;
-  let failed = 0;
-  try {
-    failed = await sendPlaceItems(ctx.api, ctx.chat!.id, photos.slice(-MAX_SHOWN_PHOTOS));
-  } catch (err) {
-    console.error(`[place] Failed to send photos for #${seq}:`, err);
-    failed = 1;
-  }
-  if (failed > 0) {
-    await ctx.reply("Не удалось показать часть архива — возможно, исходные сообщения удалили.");
+    await ctx.reply(chunk, { parse_mode: "HTML", link_preview_options: { is_disabled: true } });
   }
 }

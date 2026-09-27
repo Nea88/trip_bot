@@ -12,7 +12,7 @@ import { mediaGroupCache } from "../services/mediaGroupCache.js";
 import { notifyAdminsWithItems } from "../services/notifications.js";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { isGroupAdmin } from "../services/adminAuth.js";
-import { describeItems, largestPhoto } from "../utils/photoMessage.js";
+import { buildMessageLink, describeItems, largestPhoto } from "../utils/photoMessage.js";
 import { formatUserName } from "../utils/userName.js";
 
 const CALLBACK_PREFIX = "ph";
@@ -78,7 +78,7 @@ export async function photoCommand(ctx: Context): Promise<void> {
     ctx.api,
     config.groupChatId,
     fresh,
-    `${formatUserName(author.username, author.hasUsername)} хочет добавить ${what} к ${place}`,
+    `${formatUserName(author.username, author.hasUsername)} хочет добавить ${what} к ${place}\nОригинал: ${buildMessageLink(fresh[0].sourceChatId, fresh[0].sourceMessageId)}`,
     keyboard,
   );
 }
@@ -114,13 +114,13 @@ export async function unphotoCommand(ctx: Context): Promise<void> {
   const reply = ctx.message?.reply_to_message;
   if (!reply) {
     await ctx.reply(
-      "Ответьте командой /unphoto на то, что нужно убрать из архива: фото (исходное в группе или из /place) или исходное сообщение в группе.",
+      "Ответьте командой /unphoto на сообщение в группе, которое нужно убрать из архива (ссылки на них — в /place).",
     );
     return;
   }
 
-  // Photos match by file, so a re-sent copy from /place works too; other
-  // messages only match the original in the group.
+  // Photos match by file (so any copy of the photo works too); other messages
+  // only match the original in the group.
   const photo = largestPhoto(reply);
   const removed = photo
     ? await removeApprovedByFileUniqueId(photo.file_unique_id)
@@ -128,7 +128,7 @@ export async function unphotoCommand(ctx: Context): Promise<void> {
   await ctx.reply(
     removed > 0
       ? "Убрано из архива."
-      : "Это не прикреплено ни к одному месту. Для сообщения без фото ответьте на исходное сообщение в группе, а не на копию из /place.",
+      : "Это не прикреплено ни к одному месту. Ответьте на исходное сообщение в группе — ссылки на них есть в /place.",
   );
 }
 
