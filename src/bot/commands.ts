@@ -30,6 +30,7 @@ const GROUP_ADMIN_COMMANDS: BotCommand[] = [
   LIST,
   ...ADMIN_ONLY,
   { command: "close_poll", description: "Закрыть опрос и зафиксировать победителя" },
+  { command: "cancel_poll", description: "Закрыть опрос без подсчёта результатов" },
   HELP,
 ];
 const PRIVATE_ADMIN_COMMANDS: BotCommand[] = [...ADMIN_ONLY, HELP, START];

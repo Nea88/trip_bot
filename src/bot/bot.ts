@@ -14,7 +14,7 @@ import { setReminderTimeCommand } from "../commands/setReminderTime.js";
 import { setReminderTextCommand } from "../commands/setReminderText.js";
 import { getReminderCommand } from "../commands/getReminder.js";
 import { getOpenPollCommand } from "../commands/getOpenPoll.js";
-import { closePollCommand, closePollCallback, closePollCallbackPattern } from "../commands/closePoll.js";
+import { closePollCommand, cancelPollCommand, closePollCallback, closePollCallbackPattern } from "../commands/closePoll.js";
 import { restoreCommand } from "../commands/restore.js";
 import { excludeCommand } from "../commands/exclude.js";
 import { excludedCommand } from "../commands/excluded.js";
@@ -41,6 +41,7 @@ export function createBot(): Bot {
   bot.command("get_reminder", requireAdmin, getReminderCommand);
   bot.command("get_open_poll", requireAdmin, getOpenPollCommand);
   bot.command("close_poll", requireAdmin, requireGroupChat, closePollCommand);
+  bot.command("cancel_poll", requireAdmin, requireGroupChat, cancelPollCommand);
   bot.command("restore", requireAdmin, restoreCommand);
   bot.command("exclude", requireAdmin, excludeCommand);
   bot.command("excluded", requireAdmin, excludedCommand);

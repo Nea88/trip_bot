@@ -67,6 +67,25 @@ export async function closePollCommand(ctx: Context): Promise<void> {
   await postPendingResultMessage(ctx.api, updatedPoll!);
 }
 
+export async function cancelPollCommand(ctx: Context): Promise<void> {
+  const config = await getGroupConfig();
+  const openPoll = await getOpenPoll(config.groupChatId);
+  if (!openPoll) {
+    await ctx.reply("Сейчас нет открытого опроса.");
+    return;
+  }
+
+  try {
+    await ctx.api.stopPoll(config.groupChatId, openPoll.messageId);
+  } catch (err) {
+    // Poll message may already be deleted — nothing to stop, just close it out.
+    if (!(err instanceof GrammyError)) throw err;
+  }
+  await closeWithoutWinner(openPoll.id);
+  await unpinPollMessage(ctx.api, config.groupChatId, openPoll.messageId);
+  await ctx.reply("Опрос закрыт без подсчёта результатов — победитель не выбирается, место не исключается.");
+}
+
 export async function postPendingResultMessage(
   api: Api,
   poll: PollDocWithId,
