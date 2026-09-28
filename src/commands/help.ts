@@ -1,46 +1,16 @@
 import type { Context } from "grammy";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { isGroupAdmin } from "../services/adminAuth.js";
-
-const USER_HELP_TEXT = `Команды:
-/suggest <куда> — предложить вариант маршрута (в группе). Уходит на рассмотрение админу, появится в списке после одобрения
-/list — посмотреть текущие (уже одобренные) варианты (в группе)
-/photo <номер> — ответом на сообщение (фото, альбом, видео, текст — что угодно) прикрепить его к месту, где были. Уходит на модерацию админу
-/place <номер> — даты поездок и ссылки на фото и сообщения из архива места (в группе)
-/history — прошлые поездки, самые активные авторы идей и варианты, которые чаще всего проигрывали (в группе)
-/start — в личных сообщениях боту, чтобы получать уведомления о новых предложениях (актуально для админов)
-/help — этот список`;
-
-const ADMIN_HELP_TEXT = `${USER_HELP_TEXT}
-
-Команды для админов группы:
-Одобрение/отклонение новых предложений и фото — кнопками прямо в DM-уведомлении, отдельной команды нет
-/unphoto — ответом на фото или исходное сообщение убрать его из архива места
-/edit <номер> <текст> — изменить текст варианта
-/delete <номер> — удалить вариант навсегда
-/exclude <номер> — вручную исключить активный вариант из пула
-/restore <номер> — вернуть исключённый вариант в пул
-/excluded — список исключённых (использованных) вариантов
-/create_poll — создать опрос прямо сейчас
-/meet <ЧЧ:ММ> <точка> — точка и время старта субботней поездки (до 20:00 пятницы), публикуется в группе
-/close_poll — закрыть текущий опрос и подтвердить, куда съездили
-/cancel_poll — закрыть текущий опрос без подсчёта результатов (место не исключается)
-/get_open_poll — получить ссылку на текущий открытый опрос
-/set_schedule <день> <ЧЧ:ММ> — расписание автосоздания опроса
-/set_close_schedule <день> <ЧЧ:ММ> — расписание автозакрытия опроса, например sunday 12:00
-/get_schedule — расписание создания и закрытия опроса
-/set_reminder_time <ЧЧ:ММ> — время памятки про /suggest (приходит через день)
-/set_reminder_text <текст> — свой текст для памятки
-/get_reminder — посмотреть текущее время и текст памятки`;
+import { helpText } from "../bot/commandSpecs.js";
 
 export async function helpCommand(ctx: Context): Promise<void> {
   const userId = ctx.from?.id;
   if (!userId) {
-    await ctx.reply(USER_HELP_TEXT);
+    await ctx.reply(helpText(false));
     return;
   }
 
   const config = await getGroupConfig();
   const admin = await isGroupAdmin(ctx.api, config.groupChatId, userId);
-  await ctx.reply(admin ? ADMIN_HELP_TEXT : USER_HELP_TEXT);
+  await ctx.reply(helpText(admin));
 }

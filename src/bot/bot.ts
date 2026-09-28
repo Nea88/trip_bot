@@ -1,4 +1,4 @@
-import { Bot, type BotError } from "grammy";
+import { Bot, type BotError, type Context, type Middleware } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
 import { env } from "../config/env.js";
 import { requireAdmin } from "./middleware/requireAdmin.js";
@@ -32,6 +32,35 @@ import {
 import { placeCommand } from "../commands/place.js";
 import { historyCommand } from "../commands/history.js";
 import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
+import { COMMANDS, type CommandName } from "./commandSpecs.js";
+
+// Exhaustive: adding a command to COMMANDS without a handler fails to compile.
+const HANDLERS: Record<CommandName, (ctx: Context) => Promise<void>> = {
+  suggest: suggestCommand,
+  list: listCommand,
+  photo: photoCommand,
+  place: placeCommand,
+  history: historyCommand,
+  start: startCommand,
+  help: helpCommand,
+  unphoto: unphotoCommand,
+  edit: editCommand,
+  delete: deleteCommand,
+  exclude: excludeCommand,
+  restore: restoreCommand,
+  excluded: excludedCommand,
+  create_poll: createPollCommand,
+  meet: meetCommand,
+  close_poll: closePollCommand,
+  cancel_poll: cancelPollCommand,
+  get_open_poll: getOpenPollCommand,
+  set_schedule: setScheduleCommand,
+  set_close_schedule: setCloseScheduleCommand,
+  get_schedule: getScheduleCommand,
+  set_reminder_time: setReminderTimeCommand,
+  set_reminder_text: setReminderTextCommand,
+  get_reminder: getReminderCommand,
+};
 
 export function createBot(): Bot {
   const bot = new Bot(env.botToken);
@@ -43,32 +72,13 @@ export function createBot(): Bot {
 
   bot.use(rememberAlbumPhotos);
 
-  bot.command("start", requireDM, startCommand);
-  bot.command("help", helpCommand);
-
-  bot.command("suggest", requireGroupChat, suggestCommand);
-
-  bot.command("list", requireGroupChat, listCommand);
-  bot.command("photo", requireGroupChat, photoCommand);
-  bot.command("place", requireGroupChat, placeCommand);
-  bot.command("history", requireGroupChat, historyCommand);
-  bot.command("unphoto", requireAdmin, requireGroupChat, unphotoCommand);
-  bot.command("edit", requireAdmin, editCommand);
-  bot.command("delete", requireAdmin, deleteCommand);
-  bot.command("create_poll", requireAdmin, createPollCommand);
-  bot.command("set_schedule", requireAdmin, setScheduleCommand);
-  bot.command("set_close_schedule", requireAdmin, setCloseScheduleCommand);
-  bot.command("meet", requireAdmin, meetCommand);
-  bot.command("get_schedule", requireAdmin, getScheduleCommand);
-  bot.command("set_reminder_time", requireAdmin, setReminderTimeCommand);
-  bot.command("set_reminder_text", requireAdmin, setReminderTextCommand);
-  bot.command("get_reminder", requireAdmin, getReminderCommand);
-  bot.command("get_open_poll", requireAdmin, getOpenPollCommand);
-  bot.command("close_poll", requireAdmin, requireGroupChat, closePollCommand);
-  bot.command("cancel_poll", requireAdmin, requireGroupChat, cancelPollCommand);
-  bot.command("restore", requireAdmin, restoreCommand);
-  bot.command("exclude", requireAdmin, excludeCommand);
-  bot.command("excluded", requireAdmin, excludedCommand);
+  for (const spec of COMMANDS) {
+    const guards: Middleware[] = [];
+    if (spec.audience === "admin") guards.push(requireAdmin);
+    if (spec.where === "group") guards.push(requireGroupChat);
+    if (spec.where === "dm") guards.push(requireDM);
+    bot.command(spec.command, ...guards, HANDLERS[spec.command]);
+  }
 
   bot.callbackQuery(deleteCallbackPattern, requireAdmin, deleteCallback);
   bot.callbackQuery(closePollCallbackPattern, requireAdmin, closePollCallback);
