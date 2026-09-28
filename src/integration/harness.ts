@@ -2,6 +2,7 @@ import type { Api, Context } from "grammy";
 import { DateTime } from "luxon";
 import { env } from "../config/env.js";
 import { setClock } from "../utils/clock.js";
+import { resetGroupConfigCache } from "../services/groupConfig.js";
 
 // Every integration test runs at a fixed "now": Sunday 27.09.2026 12:00 in
 // the group's timezone — the day polls auto-close and trips get confirmed.
@@ -106,6 +107,7 @@ export async function clearFirestore(): Promise<void> {
   const url = `http://${process.env.FIRESTORE_EMULATOR_HOST}/emulator/v1/projects/${env.firebaseProjectId}/databases/(default)/documents`;
   const res = await fetch(url, { method: "DELETE" });
   if (!res.ok) throw new Error(`Failed to clear Firestore emulator: ${res.status}`);
+  resetGroupConfigCache();
 }
 
 export const photoSizes = (id: string) => [

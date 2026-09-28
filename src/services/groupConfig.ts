@@ -15,6 +15,11 @@ export async function getGroupConfig(): Promise<GroupConfig> {
   return cached;
 }
 
+// Tests wipe the database between cases; the cache must go with it.
+export function resetGroupConfigCache(): void {
+  cached = null;
+}
+
 async function updateConfig(fields: Record<string, unknown>): Promise<void> {
   await configDoc.set({ ...fields, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
   // Drop after the write, so a read that raced with it can't re-cache stale data.

@@ -117,7 +117,7 @@ export async function createMissedScheduledPoll(api: Api): Promise<void> {
   await runScheduledPollCreation(api);
 }
 
-async function runReminder(api: Api): Promise<void> {
+export async function runReminder(api: Api): Promise<void> {
   const config = await getGroupConfig();
   const today = now().setZone(env.defaultTimezone).toISODate();
 
@@ -247,4 +247,15 @@ export function scheduleBackups(api: Api): void {
   schedule(BACKUP_CRON, () => runSafely(api, "резервная копия базы", () => runBackup(api)), {
     timezone: env.defaultTimezone,
   });
+}
+
+// Stops the configurable schedules (poll, auto-close, reminder) — for tests,
+// which would otherwise never exit with live cron timers.
+export async function stopConfigurableTasks(): Promise<void> {
+  for (const task of [currentPollTask, currentCloseTask, currentReminderTask]) {
+    await task?.stop();
+  }
+  currentPollTask = null;
+  currentCloseTask = null;
+  currentReminderTask = null;
 }

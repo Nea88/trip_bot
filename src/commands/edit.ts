@@ -1,6 +1,6 @@
 import type { Context } from "grammy";
-import { getBySeq, editSuggestionText } from "../services/suggestions.js";
-import { validateSuggestionText } from "../utils/suggestionText.js";
+import { getBySeq, editSuggestionText, findByNormalizedText } from "../services/suggestions.js";
+import { normalizeSuggestionText, validateSuggestionText } from "../utils/suggestionText.js";
 
 export async function editCommand(ctx: Context): Promise<void> {
   const args = ctx.match?.toString().trim() ?? "";
@@ -25,6 +25,13 @@ export async function editCommand(ctx: Context): Promise<void> {
   const suggestion = await getBySeq(seq);
   if (!suggestion || suggestion.status !== "active") {
     await ctx.reply(`Активное предложение #${seq} не найдено.`);
+    return;
+  }
+
+  // Same duplicate rule as /suggest: no two places with the same name.
+  const duplicate = await findByNormalizedText(normalizeSuggestionText(newText));
+  if (duplicate && duplicate.id !== suggestion.id) {
+    await ctx.reply(`Такой вариант уже есть: #${duplicate.seq} "${duplicate.text}".`);
     return;
   }
 
