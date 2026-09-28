@@ -13,6 +13,7 @@ import { getById as getSuggestionById } from "./suggestions.js";
 import { computeWinner } from "./pollWinner.js";
 import { env } from "../config/env.js";
 import { tripDateFor } from "../utils/tripDate.js";
+import { now } from "../utils/clock.js";
 import type { PollDocWithId } from "../types/index.js";
 
 export const CLOSE_POLL_CALLBACK_PREFIX = "cp";
@@ -109,7 +110,7 @@ export async function cancelOpenPoll(
 
 // "26.09" — the Saturday the admin is asked about.
 function lastTripDayLabel(): string {
-  return DateTime.fromISO(tripDateFor(DateTime.now(), env.defaultTimezone)).toFormat("dd.LL");
+  return DateTime.fromISO(tripDateFor(now(), env.defaultTimezone)).toFormat("dd.LL");
 }
 
 /**

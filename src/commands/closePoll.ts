@@ -1,5 +1,5 @@
 import type { CallbackQueryContext, Context } from "grammy";
-import { DateTime } from "luxon";
+import { now } from "../utils/clock.js";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { getPollById, resolvePendingResult } from "../services/polls.js";
 import { getById as getSuggestionById, excludeSuggestion } from "../services/suggestions.js";
@@ -63,7 +63,7 @@ export async function closePollCallback(ctx: CallbackQueryContext<Context>): Pro
   }
 
   // Confirmed on Sunday (or later) — the trip was the Saturday before.
-  const tripDate = tripDateFor(DateTime.now(), env.defaultTimezone);
+  const tripDate = tripDateFor(now(), env.defaultTimezone);
   if (!(await resolvePendingResult(pollId, suggestionId, tripDate))) {
     await ctx.editMessageText("Этот опрос уже обработан.");
     await ctx.answerCallbackQuery();

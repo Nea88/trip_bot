@@ -55,34 +55,24 @@ async function loadGroupConfig(): Promise<GroupConfig> {
   return data;
 }
 
-export async function setSchedule(
-  day: number,
-  time: string,
-  timezone: string,
-): Promise<void> {
+export async function setSchedule(day: number, time: string): Promise<void> {
   await updateConfig({
     scheduleDay: day,
     scheduleTime: time,
-    timezone,
     scheduleSetAt: FieldValue.serverTimestamp(),
   });
 }
 
-export async function setCloseSchedule(
-  day: number,
-  time: string,
-  timezone: string,
-): Promise<void> {
+export async function setCloseSchedule(day: number, time: string): Promise<void> {
   await updateConfig({
     closeScheduleDay: day,
     closeScheduleTime: time,
-    closeTimezone: timezone,
     closeScheduleSetAt: FieldValue.serverTimestamp(),
   });
 }
 
-export async function setReminderSchedule(time: string, timezone: string): Promise<void> {
-  await updateConfig({ reminderTime: time, reminderTimezone: timezone });
+export async function setReminderSchedule(time: string): Promise<void> {
+  await updateConfig({ reminderTime: time });
 }
 
 export async function setReminderText(text: string): Promise<void> {

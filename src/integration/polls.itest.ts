@@ -10,12 +10,11 @@ import { setSchedule } from "../services/groupConfig.js";
 import { createMissedScheduledPoll } from "../scheduler/scheduler.js";
 import { db } from "../firebase/firestore.js";
 import { MIMOKROKODIL_TEXT } from "../constants.js";
-import { tripDateFor } from "../utils/tripDate.js";
 import { closeMissedScheduledPoll, remindAboutMeet } from "../scheduler/scheduler.js";
 import { setCloseSchedule } from "../services/groupConfig.js";
 import { meetCommand } from "../commands/meet.js";
 import { registerForNotifications } from "../services/registrations.js";
-import { ADMIN_DM } from "./harness.js";
+import { ADMIN_DM, NOW } from "./harness.js";
 import { ADMIN_ID, GROUP_CHAT_ID, clearFirestore, createFakeApi, createFakeCtx } from "./harness.js";
 
 beforeEach(clearFirestore);
@@ -67,7 +66,7 @@ test("/close_poll → confirm: the place is excluded, the trip dated and announc
   assert.match(confirm.edits[0], /съездили в "место 2"/);
   assert.equal((await getBySeq(2))?.status, "excluded");
   const [closed] = await listClosedPolls();
-  assert.equal(closed.tripDate, tripDateFor(DateTime.now(), "Europe/Moscow"));
+  assert.equal(closed.tripDate, "2026-09-26", "confirmed on Sunday → the Saturday before");
 
   const again = createFakeCtx(api, { userId: ADMIN_ID, callbackData: buttons[0].callback_data });
   await closePollCallback(again.ctx as never);
@@ -133,8 +132,8 @@ test("/cancel_poll closes without counting and unpins", async () => {
 
 // Sets a weekly schedule one hour ago, as if configured long before.
 async function scheduleOneHourAgo(): Promise<void> {
-  const occurrence = DateTime.now().setZone("Europe/Moscow").minus({ hours: 1 });
-  await setSchedule(occurrence.weekday % 7, occurrence.toFormat("HH:mm"), "Europe/Moscow");
+  const occurrence = NOW.minus({ hours: 1 });
+  await setSchedule(occurrence.weekday % 7, occurrence.toFormat("HH:mm"));
   await db.collection("config").doc("main").update({
     scheduleSetAt: Timestamp.fromDate(occurrence.minus({ days: 7 }).toJSDate()),
   });
@@ -162,8 +161,8 @@ test("no catch-up if a poll was already created after the scheduled time", async
 
 // Auto-close configured one hour ago, as if set long before.
 async function closeScheduleOneHourAgo(): Promise<void> {
-  const occurrence = DateTime.now().setZone("Europe/Moscow").minus({ hours: 1 });
-  await setCloseSchedule(occurrence.weekday % 7, occurrence.toFormat("HH:mm"), "Europe/Moscow");
+  const occurrence = NOW.minus({ hours: 1 });
+  await setCloseSchedule(occurrence.weekday % 7, occurrence.toFormat("HH:mm"));
   await db.collection("config").doc("main").update({
     closeScheduleSetAt: Timestamp.fromDate(occurrence.minus({ days: 7 }).toJSDate()),
   });
@@ -172,7 +171,7 @@ async function closeScheduleOneHourAgo(): Promise<void> {
 async function backdateOpenPoll(days: number): Promise<void> {
   const poll = await getOpenPoll(GROUP_CHAT_ID);
   await db.collection("polls").doc(poll!.id).update({
-    createdAt: Timestamp.fromDate(DateTime.now().minus({ days }).toJSDate()),
+    createdAt: Timestamp.fromDate(NOW.minus({ days }).toJSDate()),
   });
 }
 
@@ -220,7 +219,7 @@ test("/meet stores the start and announces it; Friday reminders only while it's 
   await meetCommand(meet.ctx);
   assert.match(meet.lastReply(), /Опубликовано в группе/);
   const announce = callsTo("sendMessage").filter((c) => c.args[0] === GROUP_CHAT_ID).at(-1)!;
-  assert.match(announce.args[1] as string, /🏁 Старт в субботу \d\d\.\d\d в 09:30\nТочка: АЗС на выезде/);
+  assert.match(announce.args[1] as string, /🏁 Старт в субботу 03\.10 в 09:30\nТочка: АЗС на выезде/);
   const poll = await getOpenPoll(GROUP_CHAT_ID);
   assert.equal(poll?.meetTime, "09:30");
   assert.equal(poll?.meetPlace, "АЗС на выезде");

@@ -1,6 +1,7 @@
 import { schedule, type ScheduledTask } from "node-cron";
 import type { Api } from "grammy";
 import { DateTime } from "luxon";
+import { now } from "../utils/clock.js";
 import { getGroupConfig, markReminderSent } from "../services/groupConfig.js";
 import { createPollIfPossible } from "../services/pollCreation.js";
 import { getLatestPollCreatedAt, getOpenPoll } from "../services/polls.js";
@@ -74,7 +75,7 @@ export async function rescheduleFromConfig(api: Api): Promise<void> {
   }
 
   const config = await getGroupConfig();
-  if (config.scheduleDay == null || config.scheduleTime == null || config.timezone == null) {
+  if (config.scheduleDay == null || config.scheduleTime == null) {
     return;
   }
 
@@ -82,7 +83,7 @@ export async function rescheduleFromConfig(api: Api): Promise<void> {
   const expression = `${minute} ${hour} * * ${config.scheduleDay}`;
 
   currentPollTask = schedule(expression, () => runSafely(api, "создание опроса по расписанию", () => runScheduledPollCreation(api)), {
-    timezone: config.timezone,
+    timezone: env.defaultTimezone,
   });
 }
 
@@ -92,17 +93,17 @@ export async function rescheduleFromConfig(api: Api): Promise<void> {
  */
 export async function createMissedScheduledPoll(api: Api): Promise<void> {
   const config = await getGroupConfig();
-  if (config.scheduleDay == null || config.scheduleTime == null || config.timezone == null) {
+  if (config.scheduleDay == null || config.scheduleTime == null) {
     return;
   }
 
-  const now = DateTime.now();
-  const occurrence = lastScheduledOccurrence(now, config.scheduleDay, config.scheduleTime, config.timezone);
+  const current = now();
+  const occurrence = lastScheduledOccurrence(current, config.scheduleDay, config.scheduleTime, env.defaultTimezone);
   const lastCreatedAt = await getLatestPollCreatedAt();
   const scheduleSetAt = config.scheduleSetAt?.toDate() ?? null;
   const missed = shouldCreateMissedPoll(
     occurrence,
-    now,
+    current,
     lastCreatedAt ? DateTime.fromJSDate(lastCreatedAt) : null,
     scheduleSetAt ? DateTime.fromJSDate(scheduleSetAt) : null,
   );
@@ -114,7 +115,7 @@ export async function createMissedScheduledPoll(api: Api): Promise<void> {
 
 async function runReminder(api: Api): Promise<void> {
   const config = await getGroupConfig();
-  const today = DateTime.now().setZone(config.reminderTimezone ?? "UTC").toISODate();
+  const today = now().setZone(env.defaultTimezone).toISODate();
 
   if (today && config.lastReminderSentDate) {
     const daysSinceLastSent = DateTime.fromISO(today).diff(
@@ -143,7 +144,7 @@ export async function rescheduleReminderFromConfig(api: Api): Promise<void> {
   }
 
   const config = await getGroupConfig();
-  if (config.reminderTime == null || config.reminderTimezone == null) {
+  if (config.reminderTime == null) {
     return;
   }
 
@@ -151,7 +152,7 @@ export async function rescheduleReminderFromConfig(api: Api): Promise<void> {
   const expression = `${minute} ${hour} * * *`;
 
   currentReminderTask = schedule(expression, () => runSafely(api, "памятка про /suggest", () => runReminder(api)), {
-    timezone: config.reminderTimezone,
+    timezone: env.defaultTimezone,
   });
 }
 
@@ -180,7 +181,7 @@ export async function rescheduleCloseFromConfig(api: Api): Promise<void> {
   }
 
   const config = await getGroupConfig();
-  if (config.closeScheduleDay == null || config.closeScheduleTime == null || config.closeTimezone == null) {
+  if (config.closeScheduleDay == null || config.closeScheduleTime == null) {
     return;
   }
 
@@ -188,14 +189,14 @@ export async function rescheduleCloseFromConfig(api: Api): Promise<void> {
   const expression = `${minute} ${hour} * * ${config.closeScheduleDay}`;
 
   currentCloseTask = schedule(expression, () => runSafely(api, "автозакрытие опроса", () => runScheduledPollClose(api)), {
-    timezone: config.closeTimezone,
+    timezone: env.defaultTimezone,
   });
 }
 
 // Called at startup: close a poll whose scheduled auto-close was missed.
 export async function closeMissedScheduledPoll(api: Api): Promise<void> {
   const config = await getGroupConfig();
-  if (config.closeScheduleDay == null || config.closeScheduleTime == null || config.closeTimezone == null) {
+  if (config.closeScheduleDay == null || config.closeScheduleTime == null) {
     return;
   }
   const openPoll = await getOpenPoll(config.groupChatId);
@@ -203,10 +204,10 @@ export async function closeMissedScheduledPoll(api: Api): Promise<void> {
   if (!openPoll || !createdAt) return;
 
   const occurrence = lastScheduledOccurrence(
-    DateTime.now(),
+    now(),
     config.closeScheduleDay,
     config.closeScheduleTime,
-    config.closeTimezone,
+    env.defaultTimezone,
   );
   const setAt = config.closeScheduleSetAt?.toDate();
   if (!shouldCloseMissedPoll(occurrence, DateTime.fromJSDate(createdAt), setAt ? DateTime.fromJSDate(setAt) : null)) {

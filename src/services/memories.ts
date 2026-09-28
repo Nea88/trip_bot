@@ -8,14 +8,15 @@ import { listApprovedForSuggestion } from "./placePhotos.js";
 import { findAnniversaries, formatMemories, type MemoryItem } from "../utils/memories.js";
 import { groupArchive } from "../utils/placeArchive.js";
 import { pollTripDate } from "../utils/tripDate.js";
+import { now } from "../utils/clock.js";
 
 /**
  * Posts "on this day N years ago we went to…" for trips (polls with a
  * confirmed winner, dated by the Saturday of the trip). At most once per day.
  */
-export async function sendTripMemories(api: Api, now: DateTime = DateTime.now()): Promise<void> {
+export async function sendTripMemories(api: Api, at: DateTime = now()): Promise<void> {
   const timezone = env.defaultTimezone;
-  const today = now.setZone(timezone).toISODate();
+  const today = at.setZone(timezone).toISODate();
   const config = await getGroupConfig();
   if (!today || config.lastMemoriesSentDate === today) return;
 
@@ -26,7 +27,7 @@ export async function sendTripMemories(api: Api, now: DateTime = DateTime.now())
       : [];
   });
   const items: MemoryItem[] = [];
-  for (const { suggestionId, yearsAgo } of findAnniversaries(trips, now, timezone)) {
+  for (const { suggestionId, yearsAgo } of findAnniversaries(trips, at, timezone)) {
     const suggestion = await getById(suggestionId);
     if (!suggestion) continue;
     const photos = await listApprovedForSuggestion(suggestionId);

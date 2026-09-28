@@ -29,18 +29,18 @@ test("isValidTimezone checks IANA names", () => {
   assert.equal(isValidTimezone("Mars/Olympus"), false);
 });
 
-test("parseWeeklySchedule reads day, time and optional timezone", () => {
-  assert.deepEqual(parseWeeklySchedule("sunday 10:00", "Europe/Moscow"), {
-    day: 0,
-    time: "10:00",
-    timezone: "Europe/Moscow",
-  });
-  assert.deepEqual(parseWeeklySchedule(" fri  20:30  UTC ", "Europe/Moscow"), { day: 5, time: "20:30", timezone: "UTC" });
+test("parseWeeklySchedule reads day and time", () => {
+  assert.deepEqual(parseWeeklySchedule("sunday 10:00", "Europe/Moscow"), { day: 0, time: "10:00" });
+  assert.deepEqual(parseWeeklySchedule(" fri  20:30 ", "Europe/Moscow"), { day: 5, time: "20:30" });
 });
 
 test("parseWeeklySchedule reports what is wrong", () => {
   assert.deepEqual(parseWeeklySchedule("sunday", "UTC"), { error: "" });
   assert.match((parseWeeklySchedule("воскресенье 10:00", "UTC") as { error: string }).error, /день недели/);
   assert.match((parseWeeklySchedule("sun 25:00", "UTC") as { error: string }).error, /времени/);
-  assert.match((parseWeeklySchedule("sun 10:00 Mars/Base", "UTC") as { error: string }).error, /таймзона/);
+});
+
+test("parseWeeklySchedule rejects a timezone argument, naming the configured one", () => {
+  const result = parseWeeklySchedule("sun 10:00 UTC", "Europe/Moscow") as { error: string };
+  assert.match(result.error, /настройках аддона.*Europe\/Moscow/);
 });

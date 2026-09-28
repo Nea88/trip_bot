@@ -5,6 +5,7 @@ import { getOpenPoll, setMeet } from "../services/polls.js";
 import { env } from "../config/env.js";
 import { isValidTime } from "../utils/time.js";
 import { upcomingTripDate } from "../utils/tripDate.js";
+import { now } from "../utils/clock.js";
 
 const USAGE =
   "Использование: /meet <ЧЧ:ММ> <точка старта>, например: /meet 09:00 АЗС на выезде из города. Указать нужно до 20:00 пятницы.";
@@ -33,7 +34,7 @@ export async function meetCommand(ctx: Context): Promise<void> {
   const isUpdate = Boolean(openPoll.meetTime);
   await setMeet(openPoll.id, time, place);
 
-  const day = DateTime.fromISO(upcomingTripDate(DateTime.now(), env.defaultTimezone)).toFormat("dd.LL");
+  const day = DateTime.fromISO(upcomingTripDate(now(), env.defaultTimezone)).toFormat("dd.LL");
   await ctx.api.sendMessage(
     config.groupChatId,
     `🏁 ${isUpdate ? "Обновлено: с" : "С"}тарт в субботу ${day} в ${time}\nТочка: ${place}`,
