@@ -6,6 +6,8 @@ import { chunkLines } from "../utils/messageChunks.js";
 import { describeItems } from "../utils/photoMessage.js";
 import { groupArchive } from "../utils/placeArchive.js";
 import { escapeHtml } from "../utils/html.js";
+import { formatIsoDate, pollTripDate } from "../utils/tripDate.js";
+import { env } from "../config/env.js";
 import type { SuggestionStatus } from "../types/index.js";
 
 // Keeps /place readable; the newest entries are the ones shown.
@@ -42,8 +44,9 @@ export async function placeCommand(ctx: Context): Promise<void> {
     `Статус: ${STATUS_LABELS[suggestion.status]}`,
   ];
   const tripDates = wins
-    .map((poll) => poll.closedAt?.toDate().toLocaleDateString("ru-RU"))
-    .filter((date): date is string => Boolean(date));
+    .map((poll) => pollTripDate(poll, env.defaultTimezone))
+    .filter((date): date is string => Boolean(date))
+    .map(formatIsoDate);
   lines.push(tripDates.length > 0 ? `Поездки: ${tripDates.join(", ")}` : "Поездок сюда через бота ещё не было.");
 
   if (photos.length === 0) {

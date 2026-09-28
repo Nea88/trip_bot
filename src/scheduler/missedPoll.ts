@@ -39,3 +39,17 @@ export function shouldCreateMissedPoll(
   if (scheduleSetAt && scheduleSetAt > occurrence) return false;
   return lastPollCreatedAt === null || lastPollCreatedAt < occurrence;
 }
+
+/**
+ * The open poll should have been auto-closed while the bot was down: it was
+ * created before the last scheduled close, and that close was already
+ * configured then. Closing late is harmless, so there's no grace window.
+ */
+export function shouldCloseMissedPoll(
+  closeOccurrence: DateTime,
+  pollCreatedAt: DateTime,
+  closeScheduleSetAt: DateTime | null,
+): boolean {
+  if (closeScheduleSetAt && closeScheduleSetAt > closeOccurrence) return false;
+  return pollCreatedAt < closeOccurrence;
+}

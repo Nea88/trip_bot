@@ -68,6 +68,19 @@ export async function setSchedule(
   });
 }
 
+export async function setCloseSchedule(
+  day: number,
+  time: string,
+  timezone: string,
+): Promise<void> {
+  await updateConfig({
+    closeScheduleDay: day,
+    closeScheduleTime: time,
+    closeTimezone: timezone,
+    closeScheduleSetAt: FieldValue.serverTimestamp(),
+  });
+}
+
 export async function setReminderSchedule(time: string, timezone: string): Promise<void> {
   await updateConfig({ reminderTime: time, reminderTimezone: timezone });
 }
@@ -78,4 +91,8 @@ export async function setReminderText(text: string): Promise<void> {
 
 export async function markReminderSent(isoDate: string): Promise<void> {
   await updateConfig({ lastReminderSentDate: isoDate });
+}
+
+export async function markMemoriesSent(isoDate: string): Promise<void> {
+  await updateConfig({ lastMemoriesSentDate: isoDate });
 }

@@ -1,6 +1,6 @@
 {
   "name": "ride-bot",
-  "version": "1.15.0",
+  "version": "1.16.0",
   "description": "Telegram bot for group ride destination planning",
   "main": "index.js",
   "scripts": {

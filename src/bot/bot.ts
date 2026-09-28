@@ -9,7 +9,8 @@ import { listCommand } from "../commands/list.js";
 import { editCommand } from "../commands/edit.js";
 import { deleteCommand, deleteCallback, deleteCallbackPattern } from "../commands/deleteSuggestion.js";
 import { createPollCommand } from "../commands/createPoll.js";
-import { setScheduleCommand } from "../commands/setSchedule.js";
+import { setCloseScheduleCommand, setScheduleCommand } from "../commands/setSchedule.js";
+import { meetCommand } from "../commands/meet.js";
 import { getScheduleCommand } from "../commands/getSchedule.js";
 import { setReminderTimeCommand } from "../commands/setReminderTime.js";
 import { setReminderTextCommand } from "../commands/setReminderText.js";
@@ -56,6 +57,8 @@ export function createBot(): Bot {
   bot.command("delete", requireAdmin, deleteCommand);
   bot.command("create_poll", requireAdmin, createPollCommand);
   bot.command("set_schedule", requireAdmin, setScheduleCommand);
+  bot.command("set_close_schedule", requireAdmin, setCloseScheduleCommand);
+  bot.command("meet", requireAdmin, meetCommand);
   bot.command("get_schedule", requireAdmin, getScheduleCommand);
   bot.command("set_reminder_time", requireAdmin, setReminderTimeCommand);
   bot.command("set_reminder_text", requireAdmin, setReminderTextCommand);

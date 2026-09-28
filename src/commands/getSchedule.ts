@@ -11,18 +11,20 @@ const DAY_NAMES = [
   "суббота",
 ];
 
+function describe(day: number | null | undefined, time: string | null | undefined, tz: string | null | undefined): string | null {
+  if (day == null || time == null || tz == null) return null;
+  return `${DAY_NAMES[day] ?? String(day)} в ${time} (${tz})`;
+}
+
 export async function getScheduleCommand(ctx: Context): Promise<void> {
   const config = await getGroupConfig();
+  const create = describe(config.scheduleDay, config.scheduleTime, config.timezone);
+  const close = describe(config.closeScheduleDay, config.closeScheduleTime, config.closeTimezone);
 
-  if (config.scheduleDay == null || config.scheduleTime == null || config.timezone == null) {
-    await ctx.reply(
-      "Расписание автосоздания опроса не задано (настройте через /set_schedule).",
-    );
-    return;
-  }
-
-  const dayName = DAY_NAMES[config.scheduleDay] ?? String(config.scheduleDay);
   await ctx.reply(
-    `Опрос создаётся автоматически каждую(ый) ${dayName} в ${config.scheduleTime} (${config.timezone})`,
+    [
+      create ? `Создание опроса: ${create}` : "Создание опроса по расписанию не задано (/set_schedule).",
+      close ? `Закрытие опроса: ${close}` : "Автозакрытие опроса не задано (/set_close_schedule).",
+    ].join("\n"),
   );
 }

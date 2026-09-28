@@ -1,132 +1,33 @@
-import { GrammyError, InlineKeyboard, type Api, type CallbackQueryContext, type Context } from "grammy";
+import type { CallbackQueryContext, Context } from "grammy";
+import { DateTime } from "luxon";
 import { getGroupConfig } from "../services/groupConfig.js";
-import {
-  getOpenPoll,
-  claimOpenPoll,
-  reopenPoll,
-  setPendingResult,
-  setPendingResultMessageId,
-  closeWithoutWinner,
-  resolvePendingResult,
-  getPollById,
-} from "../services/polls.js";
+import { getPollById, resolvePendingResult } from "../services/polls.js";
 import { getById as getSuggestionById, excludeSuggestion } from "../services/suggestions.js";
-import { computeWinner } from "../services/pollWinner.js";
-import type { PollDocWithId } from "../types/index.js";
-
-const CALLBACK_PREFIX = "cp";
-const ALREADY_CLOSING_TEXT = "Этот опрос уже закрывается.";
-
-async function unpinPollMessage(api: Api, groupChatId: number, messageId: number): Promise<void> {
-  try {
-    await api.unpinChatMessage(groupChatId, messageId);
-  } catch (err) {
-    console.error("[closePoll] Failed to unpin poll message:", err);
-  }
-}
+import {
+  CLOSE_OUTCOME_TEXT,
+  CLOSE_POLL_CALLBACK_PREFIX,
+  cancelOpenPoll,
+  closeOpenPoll,
+} from "../services/pollClosing.js";
+import { env } from "../config/env.js";
+import { formatIsoDate, tripDateFor } from "../utils/tripDate.js";
 
 export async function closePollCommand(ctx: Context): Promise<void> {
   const config = await getGroupConfig();
-  const openPoll = await getOpenPoll(config.groupChatId);
-  if (!openPoll) {
-    await ctx.reply("Сейчас нет открытого опроса.");
-    return;
+  const outcome = await closeOpenPoll(ctx.api, config.groupChatId);
+  if (outcome !== "awaiting_confirmation") {
+    await ctx.reply(CLOSE_OUTCOME_TEXT[outcome]);
   }
-  if (!(await claimOpenPoll(openPoll.id))) {
-    await ctx.reply(ALREADY_CLOSING_TEXT);
-    return;
-  }
-
-  let finalPoll;
-  try {
-    finalPoll = await ctx.api.stopPoll(config.groupChatId, openPoll.messageId);
-  } catch (err) {
-    if (err instanceof GrammyError) {
-      // Poll message was deleted (or is otherwise gone) — no way to get
-      // results, so just close it out instead of leaving it stuck "open".
-      await closeWithoutWinner(openPoll.id);
-      await unpinPollMessage(ctx.api, config.groupChatId, openPoll.messageId);
-      await ctx.reply(
-        "Не удалось найти сообщение с опросом (похоже, его удалили) — опрос закрыт без результатов, место не исключается.",
-      );
-      return;
-    }
-    await reopenPoll(openPoll.id);
-    throw err;
-  }
-  await unpinPollMessage(ctx.api, config.groupChatId, openPoll.messageId);
-  const voterCounts = finalPoll.options.map((o) => o.voter_count);
-  const winner = computeWinner(openPoll.optionSuggestionIds, voterCounts);
-
-  if (winner.kind === "no_votes") {
-    await closeWithoutWinner(openPoll.id);
-    await ctx.reply(
-      "Опрос закрыт: за реальные варианты никто не проголосовал (или все выбрали «Мимокрокодил») — место не исключается.",
-    );
-    return;
-  }
-
-  await setPendingResult(openPoll.id, {
-    candidateSuggestionIds: winner.candidateSuggestionIds,
-    voterCounts: winner.voterCounts,
-  });
-
-  const updatedPoll = await getPollById(openPoll.id);
-  await postPendingResultMessage(ctx.api, updatedPoll!);
 }
 
 export async function cancelPollCommand(ctx: Context): Promise<void> {
   const config = await getGroupConfig();
-  const openPoll = await getOpenPoll(config.groupChatId);
-  if (!openPoll) {
-    await ctx.reply("Сейчас нет открытого опроса.");
-    return;
-  }
-  if (!(await claimOpenPoll(openPoll.id))) {
-    await ctx.reply(ALREADY_CLOSING_TEXT);
-    return;
-  }
-
-  try {
-    await ctx.api.stopPoll(config.groupChatId, openPoll.messageId);
-  } catch (err) {
-    // Poll message may already be deleted — nothing to stop, just close it out.
-    if (!(err instanceof GrammyError)) {
-      await reopenPoll(openPoll.id);
-      throw err;
-    }
-  }
-  await closeWithoutWinner(openPoll.id);
-  await unpinPollMessage(ctx.api, config.groupChatId, openPoll.messageId);
-  await ctx.reply("Опрос закрыт без подсчёта результатов — победитель не выбирается, место не исключается.");
-}
-
-export async function postPendingResultMessage(
-  api: Api,
-  poll: PollDocWithId,
-): Promise<void> {
-  if (!poll.pendingResult) return;
-  const { candidateSuggestionIds, voterCounts } = poll.pendingResult;
-  const isTie = candidateSuggestionIds.length > 1;
-
-  const keyboard = new InlineKeyboard();
-  for (let index = 0; index < candidateSuggestionIds.length; index++) {
-    const suggestionId = candidateSuggestionIds[index];
-    const count = voterCounts[index];
-
-    const suggestion = await getSuggestionById(suggestionId);
-    if (!suggestion) continue;
-    const label = isTie
-      ? `Выбрать: ${suggestion.text} (${count})`
-      : `Подтвердить: ${suggestion.text} (${count})`;
-    keyboard.text(label, `${CALLBACK_PREFIX}:${poll.id}:confirm:${suggestion.id}`).row();
-  }
-  keyboard.text("Отмена", `${CALLBACK_PREFIX}:${poll.id}:cancel`);
-
-  const text = isTie ? "Ничья! Выберите победителя вручную:" : "Опрос закрыт. Подтвердите победителя:";
-
-  const message = await api.sendMessage(poll.groupChatId, text, { reply_markup: keyboard });
-  await setPendingResultMessageId(poll.id, message.message_id);
+  const outcome = await cancelOpenPoll(ctx.api, config.groupChatId);
+  await ctx.reply(
+    outcome === "cancelled"
+      ? "Опрос закрыт без подсчёта результатов — победитель не выбирается, место не исключается."
+      : CLOSE_OUTCOME_TEXT[outcome],
+  );
 }
 
 export async function closePollCallback(ctx: CallbackQueryContext<Context>): Promise<void> {
@@ -148,7 +49,7 @@ export async function closePollCallback(ctx: CallbackQueryContext<Context>): Pro
       await ctx.answerCallbackQuery();
       return;
     }
-    await ctx.editMessageText("Отменено: победитель не зафиксирован, место не исключается.");
+    await ctx.editMessageText("Отмечено: в этот раз никуда не ездили, место не исключается.");
     await ctx.answerCallbackQuery();
     return;
   }
@@ -161,18 +62,20 @@ export async function closePollCallback(ctx: CallbackQueryContext<Context>): Pro
     return;
   }
 
-  if (!(await resolvePendingResult(pollId, suggestionId))) {
+  // Confirmed on Sunday (or later) — the trip was the Saturday before.
+  const tripDate = tripDateFor(DateTime.now(), env.defaultTimezone);
+  if (!(await resolvePendingResult(pollId, suggestionId, tripDate))) {
     await ctx.editMessageText("Этот опрос уже обработан.");
     await ctx.answerCallbackQuery();
     return;
   }
   await excludeSuggestion(suggestionId);
-  await ctx.editMessageText(`Победитель: "${suggestion.text}"!`);
+  await ctx.editMessageText(`Отмечено: ${formatIsoDate(tripDate)} съездили в "${suggestion.text}".`);
   await ctx.answerCallbackQuery();
   await ctx.api.sendMessage(
     poll.groupChatId,
-    `Едем в: "${suggestion.text}"! Хорошей поездки!\n\nПосле поездки ответьте на фото командой /photo ${suggestion.seq} — они сохранятся в архиве места (/place ${suggestion.seq}).`,
+    `Съездили в "${suggestion.text}"! Сохраните фото с поездки: ответьте на них командой /photo ${suggestion.seq} — они попадут в архив места (/place ${suggestion.seq}).`,
   );
 }
 
-export const closePollCallbackPattern = new RegExp(`^${CALLBACK_PREFIX}:`);
+export const closePollCallbackPattern = new RegExp(`^${CLOSE_POLL_CALLBACK_PREFIX}:`);

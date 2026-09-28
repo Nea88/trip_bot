@@ -10,6 +10,12 @@ import { setSchedule } from "../services/groupConfig.js";
 import { createMissedScheduledPoll } from "../scheduler/scheduler.js";
 import { db } from "../firebase/firestore.js";
 import { MIMOKROKODIL_TEXT } from "../constants.js";
+import { tripDateFor } from "../utils/tripDate.js";
+import { closeMissedScheduledPoll, remindAboutMeet } from "../scheduler/scheduler.js";
+import { setCloseSchedule } from "../services/groupConfig.js";
+import { meetCommand } from "../commands/meet.js";
+import { registerForNotifications } from "../services/registrations.js";
+import { ADMIN_DM } from "./harness.js";
 import { ADMIN_ID, GROUP_CHAT_ID, clearFirestore, createFakeApi, createFakeCtx } from "./harness.js";
 
 beforeEach(clearFirestore);
@@ -45,26 +51,28 @@ test("/create_poll uses the 9 newest places plus Мимокрокодил and pi
   assert.match(again.lastReply(), /уже открыт/);
 });
 
-test("/close_poll → confirm: the winner is excluded and announced exactly once", async () => {
+test("/close_poll → confirm: the place is excluded, the trip dated and announced once", async () => {
   await addPlaces(2);
   const { api, callsTo } = await openPoll([1, 3, 0]); // место 1, место 2, Мимокрокодил
 
   await closePollCommand(createFakeCtx(api, { userId: ADMIN_ID }).ctx);
   assert.equal(callsTo("unpinChatMessage").length, 1);
   const confirmMessage = callsTo("sendMessage").at(-1)!;
-  assert.match(confirmMessage.args[1] as string, /Подтвердите победителя/);
+  assert.match(confirmMessage.args[1] as string, /Подтвердите, куда съездили в субботу/);
   const buttons = (confirmMessage.args[2] as Keyboard).reply_markup.inline_keyboard.flat();
   assert.match(buttons[0].callback_data, /:confirm:/);
 
   const confirm = createFakeCtx(api, { userId: ADMIN_ID, callbackData: buttons[0].callback_data });
   await closePollCallback(confirm.ctx as never);
-  assert.match(confirm.edits[0], /Победитель: "место 2"/);
+  assert.match(confirm.edits[0], /съездили в "место 2"/);
   assert.equal((await getBySeq(2))?.status, "excluded");
+  const [closed] = await listClosedPolls();
+  assert.equal(closed.tripDate, tripDateFor(DateTime.now(), "Europe/Moscow"));
 
   const again = createFakeCtx(api, { userId: ADMIN_ID, callbackData: buttons[0].callback_data });
   await closePollCallback(again.ctx as never);
   assert.match(again.edits[0], /уже обработан/);
-  assert.equal(callsTo("sendMessage").filter((c) => /Едем в/.test(c.args[1] as string)).length, 1);
+  assert.equal(callsTo("sendMessage").filter((c) => /Съездили в/.test(c.args[1] as string)).length, 1);
 });
 
 test("two simultaneous confirm taps announce the winner once", async () => {
@@ -77,7 +85,7 @@ test("two simultaneous confirm taps announce the winner once", async () => {
   const taps = [0, 1].map(() => createFakeCtx(api, { userId: ADMIN_ID, callbackData: button.callback_data }));
   await Promise.all(taps.map((t) => closePollCallback(t.ctx as never)));
 
-  assert.equal(callsTo("sendMessage").filter((c) => /Едем в/.test(c.args[1] as string)).length, 1);
+  assert.equal(callsTo("sendMessage").filter((c) => /Съездили в/.test(c.args[1] as string)).length, 1);
   assert.match(taps.flatMap((t) => t.edits).join("\n"), /уже обработан/);
 });
 
@@ -85,7 +93,7 @@ test("a tie asks to pick the winner by hand", async () => {
   await addPlaces(2);
   const { api, callsTo } = await openPoll([2, 2, 5]);
   await closePollCommand(createFakeCtx(api, { userId: ADMIN_ID }).ctx);
-  assert.match(callsTo("sendMessage").at(-1)!.args[1] as string, /Ничья/);
+  assert.match(callsTo("sendMessage").at(-1)!.args[1] as string, /ничья/);
 });
 
 test("no real votes closes the poll without a winner", async () => {
@@ -150,4 +158,88 @@ test("no catch-up if a poll was already created after the scheduled time", async
   const { api, callsTo } = createFakeApi();
   await createMissedScheduledPoll(api);
   assert.equal(callsTo("sendPoll").length, 0);
+});
+
+// Auto-close configured one hour ago, as if set long before.
+async function closeScheduleOneHourAgo(): Promise<void> {
+  const occurrence = DateTime.now().setZone("Europe/Moscow").minus({ hours: 1 });
+  await setCloseSchedule(occurrence.weekday % 7, occurrence.toFormat("HH:mm"), "Europe/Moscow");
+  await db.collection("config").doc("main").update({
+    closeScheduleSetAt: Timestamp.fromDate(occurrence.minus({ days: 7 }).toJSDate()),
+  });
+}
+
+async function backdateOpenPoll(days: number): Promise<void> {
+  const poll = await getOpenPoll(GROUP_CHAT_ID);
+  await db.collection("polls").doc(poll!.id).update({
+    createdAt: Timestamp.fromDate(DateTime.now().minus({ days }).toJSDate()),
+  });
+}
+
+test("a missed auto-close closes the poll at startup and asks admins to confirm", async () => {
+  await addPlaces(2);
+  const { api, callsTo } = await openPoll([1, 3, 0]);
+  await backdateOpenPoll(5);
+  await closeScheduleOneHourAgo();
+
+  await closeMissedScheduledPoll(api);
+  assert.equal(await getOpenPoll(GROUP_CHAT_ID), null);
+  assert.match(callsTo("sendMessage").at(-1)!.args[1] as string, /куда съездили/);
+});
+
+test("auto-close without real votes tells the group", async () => {
+  await addPlaces(2);
+  const { api, callsTo } = await openPoll([0, 0, 2]);
+  await backdateOpenPoll(5);
+  await closeScheduleOneHourAgo();
+
+  await closeMissedScheduledPoll(api);
+  assert.match(callsTo("sendMessage").at(-1)!.args[1] as string, /никто не проголосовал/);
+});
+
+test("no auto-close for a poll created after the scheduled close", async () => {
+  await addPlaces(2);
+  await closeScheduleOneHourAgo();
+  const { api, callsTo } = await openPoll([1, 3, 0]);
+
+  await closeMissedScheduledPoll(api);
+  assert.ok(await getOpenPoll(GROUP_CHAT_ID));
+  assert.equal(callsTo("stopPoll").length, 0);
+});
+
+test("/meet stores the start and announces it; Friday reminders only while it's missing", async () => {
+  await addPlaces(2);
+  await registerForNotifications(ADMIN_ID, ADMIN_DM, "admin");
+  const { api, callsTo } = await openPoll([]);
+  const dmTexts = () => callsTo("sendMessage").filter((c) => c.args[0] === ADMIN_DM).map((c) => c.args[1] as string);
+
+  await remindAboutMeet(api, false);
+  assert.match(dmTexts().at(-1)!, /До 20:00 нужно указать точку и время старта/);
+
+  const meet = createFakeCtx(api, { userId: ADMIN_ID, chatId: ADMIN_DM, match: "09:30 АЗС на выезде" });
+  await meetCommand(meet.ctx);
+  assert.match(meet.lastReply(), /Опубликовано в группе/);
+  const announce = callsTo("sendMessage").filter((c) => c.args[0] === GROUP_CHAT_ID).at(-1)!;
+  assert.match(announce.args[1] as string, /🏁 Старт в субботу \d\d\.\d\d в 09:30\nТочка: АЗС на выезде/);
+  const poll = await getOpenPoll(GROUP_CHAT_ID);
+  assert.equal(poll?.meetTime, "09:30");
+  assert.equal(poll?.meetPlace, "АЗС на выезде");
+
+  const before = dmTexts().length;
+  await remindAboutMeet(api, true);
+  assert.equal(dmTexts().length, before, "no reminder once the start is set");
+
+  await meetCommand(createFakeCtx(api, { userId: ADMIN_ID, match: "10:00 АЗС на выезде" }).ctx);
+  assert.match(callsTo("sendMessage").at(-1)!.args[1] as string, /Обновлено: старт/);
+});
+
+test("/meet validates input and needs an open poll", async () => {
+  const { api } = createFakeApi();
+  const bad = createFakeCtx(api, { userId: ADMIN_ID, match: "9:30 где-то" });
+  await meetCommand(bad.ctx);
+  assert.match(bad.lastReply(), /Неверный формат времени/);
+
+  const noPoll = createFakeCtx(api, { userId: ADMIN_ID, match: "09:30 где-то" });
+  await meetCommand(noPoll.ctx);
+  assert.match(noPoll.lastReply(), /нет открытого опроса/);
 });

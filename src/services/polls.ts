@@ -42,6 +42,9 @@ export async function createPoll(
     winnerSuggestionId: null,
     pendingResult: null,
     pendingResultMessageId: null,
+    tripDate: null,
+    meetTime: null,
+    meetPlace: null,
   };
   const ref = await polls.add(doc);
   const snap = await ref.get();
@@ -99,14 +102,19 @@ export async function closeWithoutWinner(pollId: string): Promise<void> {
 export async function resolvePendingResult(
   pollId: string,
   winnerSuggestionId: string | null,
+  tripDate: string | null = null,
 ): Promise<boolean> {
   const ref = polls.doc(pollId);
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists || (snap.data() as PollDoc).pendingResult === null) return false;
-    tx.update(ref, { winnerSuggestionId, pendingResult: null });
+    tx.update(ref, { winnerSuggestionId, pendingResult: null, tripDate });
     return true;
   });
+}
+
+export async function setMeet(pollId: string, meetTime: string, meetPlace: string): Promise<void> {
+  await polls.doc(pollId).update({ meetTime, meetPlace });
 }
 
 export async function getLatestPollCreatedAt(): Promise<Date | null> {

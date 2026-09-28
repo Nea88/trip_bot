@@ -79,6 +79,13 @@ export interface PollDoc {
   // Message with the confirm/cancel buttons for pendingResult; missing on
   // polls closed before this field existed.
   pendingResultMessageId?: number | null;
+  // ISO date of the Saturday the trip happened, set when the admin confirms
+  // where the group went; missing on polls confirmed before it existed.
+  tripDate?: string | null;
+  // Start time ("HH:MM") and meeting point of the Saturday ride, set by an
+  // admin with /meet while the poll is open.
+  meetTime?: string | null;
+  meetPlace?: string | null;
 }
 
 export interface PollDocWithId extends PollDoc {
@@ -92,6 +99,11 @@ export interface GroupConfig {
   timezone: string | null;
   // When /set_schedule was last run; missing on configs from before it existed.
   scheduleSetAt?: Timestamp | null;
+  // Weekly auto-close of the open poll (/set_close_schedule); missing = off.
+  closeScheduleDay?: number | null;
+  closeScheduleTime?: string | null;
+  closeTimezone?: string | null;
+  closeScheduleSetAt?: Timestamp | null;
   reminderTime: string | null;
   reminderTimezone: string | null;
   // null means "use DEFAULT_REMINDER_TEXT".
@@ -99,6 +111,9 @@ export interface GroupConfig {
   // ISO date (YYYY-MM-DD, in reminderTimezone) of the last sent reminder.
   // Used to send the reminder every other day instead of daily.
   lastReminderSentDate: string | null;
+  // ISO date (in DEFAULT_TIMEZONE) of the last "on this day" trip memories
+  // post; missing until the first one.
+  lastMemoriesSentDate?: string | null;
   updatedAt: Timestamp;
 }
 

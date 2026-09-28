@@ -5,9 +5,13 @@ import {
   createMissedScheduledPoll,
   rescheduleFromConfig,
   rescheduleReminderFromConfig,
+  scheduleTripMemories,
+  rescheduleCloseFromConfig,
+  closeMissedScheduledPoll,
+  scheduleMeetReminders,
 } from "./scheduler/scheduler.js";
 import { getPollsWithUnpostedPendingResult } from "./services/polls.js";
-import { postPendingResultMessage } from "./commands/closePoll.js";
+import { postPendingResultMessage } from "./services/pollClosing.js";
 import { registerBotCommands } from "./bot/commands.js";
 import { getGroupConfig } from "./services/groupConfig.js";
 
@@ -32,7 +36,17 @@ async function main(): Promise<void> {
 
   await rescheduleFromConfig(bot.api);
   await rescheduleReminderFromConfig(bot.api);
+  await rescheduleCloseFromConfig(bot.api);
+  scheduleTripMemories(bot.api);
+  scheduleMeetReminders(bot.api);
 
+  // Close before create: a missed Sunday close must happen before a missed
+  // Monday creation, or the new poll would be skipped as "already open".
+  try {
+    await closeMissedScheduledPoll(bot.api);
+  } catch (err) {
+    console.error("[startup] Failed to close missed scheduled poll:", err);
+  }
   try {
     await createMissedScheduledPoll(bot.api);
   } catch (err) {

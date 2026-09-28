@@ -40,3 +40,23 @@ export function parseTime(input: string): { hour: number; minute: number } | nul
   if (!match) return null;
   return { hour: Number(match[1]), minute: Number(match[2]) };
 }
+
+export type WeeklySchedule = { day: number; time: string; timezone: string };
+
+/**
+ * Parses "<day> <HH:MM> [timezone]" as used by /set_schedule and
+ * /set_close_schedule. Returns an error text (without usage) on bad input.
+ */
+export function parseWeeklySchedule(
+  text: string,
+  defaultTimezone: string,
+): WeeklySchedule | { error: string } {
+  const args = text.trim().split(/\s+/).filter(Boolean);
+  if (args.length !== 2 && args.length !== 3) return { error: "" };
+  const [dayArg, timeArg, tzArg = defaultTimezone] = args;
+  const day = parseDayOfWeek(dayArg);
+  if (day === null) return { error: `Не распознан день недели "${dayArg}".` };
+  if (!isValidTime(timeArg)) return { error: `Неверный формат времени "${timeArg}", ожидается ЧЧ:ММ.` };
+  if (!isValidTimezone(tzArg)) return { error: `Неизвестная таймзона "${tzArg}".` };
+  return { day, time: timeArg, timezone: tzArg };
+}

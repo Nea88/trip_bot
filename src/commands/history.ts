@@ -6,6 +6,9 @@ import { computeHistory, type HistorySuggestion } from "../services/historyStats
 import { chunkLines } from "../utils/messageChunks.js";
 import { buildMessageLink, photoBadge } from "../utils/photoMessage.js";
 import { escapeHtml } from "../utils/html.js";
+import { pollTripDate } from "../utils/tripDate.js";
+import { env } from "../config/env.js";
+import { DateTime } from "luxon";
 import { pluralRu } from "../utils/plural.js";
 import { formatUserName } from "../utils/userName.js";
 
@@ -28,11 +31,14 @@ export async function historyCommand(ctx: Context): Promise<void> {
     return `#${s.seq} ${escapeHtml(s.text)}${photoBadge(s.photoCount)}${link}`;
   };
   const { trips, topAuthors, topLosers } = computeHistory(
-    polls.map((p) => ({
-      optionSuggestionIds: p.optionSuggestionIds,
-      winnerSuggestionId: p.winnerSuggestionId,
-      closedAt: p.closedAt?.toDate() ?? null,
-    })),
+    polls.map((p) => {
+      const tripDate = pollTripDate(p, env.defaultTimezone);
+      return {
+        optionSuggestionIds: p.optionSuggestionIds,
+        winnerSuggestionId: p.winnerSuggestionId,
+        closedAt: tripDate ? DateTime.fromISO(tripDate).toJSDate() : null,
+      };
+    }),
     suggestions.map((s) => ({ ...s, addedAt: s.addedAt?.toDate() ?? null })),
     TOP_LIMIT,
   );

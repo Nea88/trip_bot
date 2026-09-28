@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { DateTime } from "luxon";
-import { lastScheduledOccurrence, shouldCreateMissedPoll } from "./missedPoll.js";
+import { lastScheduledOccurrence, shouldCloseMissedPoll, shouldCreateMissedPoll } from "./missedPoll.js";
 
 const TZ = "Europe/Moscow";
 const at = (iso: string) => DateTime.fromISO(iso, { zone: TZ });
@@ -57,4 +57,16 @@ test("too late: beyond the grace window", () => {
 test("schedule set after the occurrence doesn't fire for it", () => {
   assert.equal(shouldCreateMissedPoll(occurrence, at("2026-09-25T15:00"), null, at("2026-09-25T12:00")), false);
   assert.equal(shouldCreateMissedPoll(occurrence, at("2026-09-25T15:00"), null, at("2026-09-20T12:00")), true);
+});
+
+const closeAt = at("2026-09-27T12:00"); // Sunday
+
+test("close missed: poll created before the scheduled close", () => {
+  assert.equal(shouldCloseMissedPoll(closeAt, at("2026-09-21T10:00"), null), true);
+  assert.equal(shouldCloseMissedPoll(closeAt, at("2026-09-21T10:00"), at("2026-09-01T10:00")), true);
+});
+
+test("close not missed: poll created after it, or schedule set after it", () => {
+  assert.equal(shouldCloseMissedPoll(closeAt, at("2026-09-27T12:05"), null), false);
+  assert.equal(shouldCloseMissedPoll(closeAt, at("2026-09-21T10:00"), at("2026-09-27T13:00")), false);
 });
