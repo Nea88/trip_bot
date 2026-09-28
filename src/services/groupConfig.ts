@@ -60,7 +60,12 @@ export async function setSchedule(
   time: string,
   timezone: string,
 ): Promise<void> {
-  await updateConfig({ scheduleDay: day, scheduleTime: time, timezone });
+  await updateConfig({
+    scheduleDay: day,
+    scheduleTime: time,
+    timezone,
+    scheduleSetAt: FieldValue.serverTimestamp(),
+  });
 }
 
 export async function setReminderSchedule(time: string, timezone: string): Promise<void> {

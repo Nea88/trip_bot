@@ -3,7 +3,9 @@ import type { Api } from "grammy";
 import { DateTime } from "luxon";
 import { getGroupConfig, markReminderSent } from "../services/groupConfig.js";
 import { createPollIfPossible } from "../services/pollCreation.js";
+import { getLatestPollCreatedAt } from "../services/polls.js";
 import { DEFAULT_REMINDER_TEXT } from "../constants.js";
+import { lastScheduledOccurrence, shouldCreateMissedPoll } from "./missedPoll.js";
 
 let currentPollTask: ScheduledTask | null = null;
 let currentReminderTask: ScheduledTask | null = null;
@@ -47,6 +49,32 @@ export async function rescheduleFromConfig(api: Api): Promise<void> {
   currentPollTask = schedule(expression, () => runSafely("poll creation", () => runScheduledPollCreation(api)), {
     timezone: config.timezone,
   });
+}
+
+/**
+ * Called at startup: node-cron only fires while the process is up, so if the
+ * bot was down at the scheduled time, create that week's poll now.
+ */
+export async function createMissedScheduledPoll(api: Api): Promise<void> {
+  const config = await getGroupConfig();
+  if (config.scheduleDay == null || config.scheduleTime == null || config.timezone == null) {
+    return;
+  }
+
+  const now = DateTime.now();
+  const occurrence = lastScheduledOccurrence(now, config.scheduleDay, config.scheduleTime, config.timezone);
+  const lastCreatedAt = await getLatestPollCreatedAt();
+  const scheduleSetAt = config.scheduleSetAt?.toDate() ?? null;
+  const missed = shouldCreateMissedPoll(
+    occurrence,
+    now,
+    lastCreatedAt ? DateTime.fromJSDate(lastCreatedAt) : null,
+    scheduleSetAt ? DateTime.fromJSDate(scheduleSetAt) : null,
+  );
+  if (!missed) return;
+
+  console.log(`[scheduler] Scheduled poll at ${occurrence.toISO()} was missed — creating it now.`);
+  await runScheduledPollCreation(api);
 }
 
 async function runReminder(api: Api): Promise<void> {

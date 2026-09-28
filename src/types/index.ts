@@ -90,6 +90,8 @@ export interface GroupConfig {
   scheduleDay: number | null;
   scheduleTime: string | null;
   timezone: string | null;
+  // When /set_schedule was last run; missing on configs from before it existed.
+  scheduleSetAt?: Timestamp | null;
   reminderTime: string | null;
   reminderTimezone: string | null;
   // null means "use DEFAULT_REMINDER_TEXT".

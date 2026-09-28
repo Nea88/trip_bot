@@ -1,4 +1,5 @@
 import { Bot } from "grammy";
+import { autoRetry } from "@grammyjs/auto-retry";
 import { env } from "../config/env.js";
 import { requireAdmin } from "./middleware/requireAdmin.js";
 import { requireGroupChat } from "./middleware/requireGroupChat.js";
@@ -33,6 +34,11 @@ import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
 
 export function createBot(): Bot {
   const bot = new Bot(env.botToken);
+
+  // On 429 (flood limit) Telegram says how long to wait; retry after that
+  // instead of failing the command. Capped so a long ban doesn't hang a
+  // handler for minutes.
+  bot.api.config.use(autoRetry({ maxRetryAttempts: 3, maxDelaySeconds: 60 }));
 
   bot.use(rememberAlbumPhotos);
 

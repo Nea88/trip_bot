@@ -1,7 +1,11 @@
 import http from "node:http";
 import { createBot } from "./bot/bot.js";
 import { env } from "./config/env.js";
-import { rescheduleFromConfig, rescheduleReminderFromConfig } from "./scheduler/scheduler.js";
+import {
+  createMissedScheduledPoll,
+  rescheduleFromConfig,
+  rescheduleReminderFromConfig,
+} from "./scheduler/scheduler.js";
 import { getPollsWithUnpostedPendingResult } from "./services/polls.js";
 import { postPendingResultMessage } from "./commands/closePoll.js";
 import { registerBotCommands } from "./bot/commands.js";
@@ -28,6 +32,12 @@ async function main(): Promise<void> {
 
   await rescheduleFromConfig(bot.api);
   await rescheduleReminderFromConfig(bot.api);
+
+  try {
+    await createMissedScheduledPoll(bot.api);
+  } catch (err) {
+    console.error("[startup] Failed to create missed scheduled poll:", err);
+  }
 
   const pending = await getPollsWithUnpostedPendingResult();
   for (const poll of pending) {

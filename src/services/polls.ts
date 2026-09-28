@@ -109,6 +109,12 @@ export async function resolvePendingResult(
   });
 }
 
+export async function getLatestPollCreatedAt(): Promise<Date | null> {
+  const snap = await polls.orderBy("createdAt", "desc").limit(1).get();
+  if (snap.empty) return null;
+  return (snap.docs[0].data() as PollDoc).createdAt?.toDate() ?? null;
+}
+
 export async function listClosedPolls(): Promise<PollDocWithId[]> {
   const snap = await polls.where("status", "==", "closed").get();
   return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as PollDoc) }));
