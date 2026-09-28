@@ -56,6 +56,7 @@ export interface FakeCtxOptions {
 export function createFakeCtx(api: Api, options: FakeCtxOptions) {
   const replies: string[] = [];
   const edits: string[] = [];
+  const callbackAnswers: (string | undefined)[] = [];
   const chatId = options.chatId ?? GROUP_CHAT_ID;
   const ctx = {
     api,
@@ -73,9 +74,18 @@ export function createFakeCtx(api: Api, options: FakeCtxOptions) {
       edits.push(text);
       return true;
     },
-    answerCallbackQuery: async () => true,
+    answerCallbackQuery: async (answer?: { text?: string }) => {
+      callbackAnswers.push(answer?.text);
+      return true;
+    },
   };
-  return { ctx: ctx as unknown as Context, replies, edits, lastReply: () => replies.at(-1) ?? "" };
+  return {
+    ctx: ctx as unknown as Context,
+    replies,
+    edits,
+    callbackAnswers,
+    lastReply: () => replies.at(-1) ?? "",
+  };
 }
 
 // Wipes every document in the emulator between tests.

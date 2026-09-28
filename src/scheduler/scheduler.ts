@@ -24,13 +24,34 @@ let currentPollTask: ScheduledTask | null = null;
 let currentReminderTask: ScheduledTask | null = null;
 let currentCloseTask: ScheduledTask | null = null;
 
-// A rejected promise from a cron tick would be an unhandled rejection, which
-// crashes the whole process — log it instead and wait for the next tick.
-async function runSafely(name: string, job: () => Promise<void>): Promise<void> {
+// Reason shown to admins: the message only — never the error object, which
+// may carry request details.
+function failureReason(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.length > 300 ? `${message.slice(0, 300)}…` : message;
+}
+
+/**
+ * Runs a background job (cron tick or startup catch-up). A rejected promise
+ * from a cron tick would crash the process, so errors are logged instead —
+ * and admins are told in DM, since a failed job otherwise goes unnoticed
+ * (e.g. the weekly poll simply never appears).
+ */
+export async function runSafely(api: Api, name: string, job: () => Promise<void>): Promise<void> {
   try {
     await job();
   } catch (err) {
     console.error(`[scheduler] ${name} failed:`, err);
+    try {
+      const config = await getGroupConfig();
+      await notifyAdmins(
+        api,
+        config.groupChatId,
+        `⚠️ Не получилось: ${name}. ${failureReason(err)}\nПодробности — в логах бота.`,
+      );
+    } catch (notifyErr) {
+      console.error("[scheduler] Failed to tell admins about the failure:", notifyErr);
+    }
   }
 }
 
@@ -60,7 +81,7 @@ export async function rescheduleFromConfig(api: Api): Promise<void> {
   const [hour, minute] = config.scheduleTime.split(":").map(Number);
   const expression = `${minute} ${hour} * * ${config.scheduleDay}`;
 
-  currentPollTask = schedule(expression, () => runSafely("poll creation", () => runScheduledPollCreation(api)), {
+  currentPollTask = schedule(expression, () => runSafely(api, "создание опроса по расписанию", () => runScheduledPollCreation(api)), {
     timezone: config.timezone,
   });
 }
@@ -129,14 +150,14 @@ export async function rescheduleReminderFromConfig(api: Api): Promise<void> {
   const [hour, minute] = config.reminderTime.split(":").map(Number);
   const expression = `${minute} ${hour} * * *`;
 
-  currentReminderTask = schedule(expression, () => runSafely("reminder", () => runReminder(api)), {
+  currentReminderTask = schedule(expression, () => runSafely(api, "памятка про /suggest", () => runReminder(api)), {
     timezone: config.reminderTimezone,
   });
 }
 
 // Started once at startup; unlike the poll and reminder, not configurable.
 export function scheduleTripMemories(api: Api): void {
-  schedule(MEMORIES_CRON, () => runSafely("trip memories", () => sendTripMemories(api)), {
+  schedule(MEMORIES_CRON, () => runSafely(api, "пост «В этот день»", () => sendTripMemories(api)), {
     timezone: env.defaultTimezone,
   });
 }
@@ -166,7 +187,7 @@ export async function rescheduleCloseFromConfig(api: Api): Promise<void> {
   const [hour, minute] = config.closeScheduleTime.split(":").map(Number);
   const expression = `${minute} ${hour} * * ${config.closeScheduleDay}`;
 
-  currentCloseTask = schedule(expression, () => runSafely("poll auto-close", () => runScheduledPollClose(api)), {
+  currentCloseTask = schedule(expression, () => runSafely(api, "автозакрытие опроса", () => runScheduledPollClose(api)), {
     timezone: config.closeTimezone,
   });
 }
@@ -213,6 +234,6 @@ export async function remindAboutMeet(api: Api, deadlinePassed: boolean): Promis
 
 export function scheduleMeetReminders(api: Api): void {
   const options = { timezone: env.defaultTimezone };
-  schedule(MEET_REMINDER_CRON, () => runSafely("meet reminder", () => remindAboutMeet(api, false)), options);
-  schedule(MEET_DEADLINE_CRON, () => runSafely("meet deadline", () => remindAboutMeet(api, true)), options);
+  schedule(MEET_REMINDER_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, false)), options);
+  schedule(MEET_DEADLINE_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, true)), options);
 }

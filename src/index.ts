@@ -9,6 +9,7 @@ import {
   rescheduleCloseFromConfig,
   closeMissedScheduledPoll,
   scheduleMeetReminders,
+  runSafely,
 } from "./scheduler/scheduler.js";
 import { getPollsWithUnpostedPendingResult } from "./services/polls.js";
 import { postPendingResultMessage } from "./services/pollClosing.js";
@@ -42,16 +43,12 @@ async function main(): Promise<void> {
 
   // Close before create: a missed Sunday close must happen before a missed
   // Monday creation, or the new poll would be skipped as "already open".
-  try {
-    await closeMissedScheduledPoll(bot.api);
-  } catch (err) {
-    console.error("[startup] Failed to close missed scheduled poll:", err);
-  }
-  try {
-    await createMissedScheduledPoll(bot.api);
-  } catch (err) {
-    console.error("[startup] Failed to create missed scheduled poll:", err);
-  }
+  await runSafely(bot.api, "автозакрытие пропущенного опроса при запуске", () =>
+    closeMissedScheduledPoll(bot.api),
+  );
+  await runSafely(bot.api, "создание пропущенного опроса при запуске", () =>
+    createMissedScheduledPoll(bot.api),
+  );
 
   const pending = await getPollsWithUnpostedPendingResult();
   for (const poll of pending) {

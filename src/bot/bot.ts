@@ -1,4 +1,4 @@
-import { Bot } from "grammy";
+import { Bot, type BotError } from "grammy";
 import { autoRetry } from "@grammyjs/auto-retry";
 import { env } from "../config/env.js";
 import { requireAdmin } from "./middleware/requireAdmin.js";
@@ -75,16 +75,25 @@ export function createBot(): Bot {
   bot.callbackQuery(reviewCallbackPattern, requireAdmin, reviewCallback);
   bot.callbackQuery(photoReviewCallbackPattern, requireAdmin, photoReviewCallback);
 
-  bot.catch(async (err) => {
-    // Log only the cause: the BotError itself carries ctx.api, and printing it
-    // dumps the bot token into the logs.
-    console.error(`[bot] Unhandled error in update ${err.ctx.update.update_id}:`, err.error);
-    try {
-      await err.ctx.reply("Что-то пошло не так. Попробуйте ещё раз позже.");
-    } catch {
-      // Nowhere to reply (or Telegram is down) — the log above is enough.
-    }
-  });
+  bot.catch(handleBotError);
 
   return bot;
+}
+
+const ERROR_TEXT = "Что-то пошло не так. Попробуйте ещё раз позже.";
+
+export async function handleBotError(err: BotError): Promise<void> {
+  // Log only the cause: the BotError itself carries ctx.api, and printing it
+  // dumps the bot token into the logs.
+  console.error(`[bot] Unhandled error in update ${err.ctx.update.update_id}:`, err.error);
+  try {
+    // A button press must be answered, or its spinner keeps going for ~15s.
+    if (err.ctx.callbackQuery) {
+      await err.ctx.answerCallbackQuery({ text: ERROR_TEXT });
+    } else {
+      await err.ctx.reply(ERROR_TEXT);
+    }
+  } catch {
+    // Nowhere to reply (or Telegram is down) — the log above is enough.
+  }
 }
