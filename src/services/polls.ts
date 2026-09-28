@@ -120,6 +120,20 @@ export async function listClosedPolls(): Promise<PollDocWithId[]> {
   return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as PollDoc) }));
 }
 
+/**
+ * Whether the place is an option of the open poll or a candidate awaiting
+ * winner confirmation — deleting it then would break closing that poll.
+ */
+export async function isSuggestionInActivePoll(
+  groupChatId: number,
+  suggestionId: string,
+): Promise<boolean> {
+  const openPoll = await getOpenPoll(groupChatId);
+  if (openPoll?.optionSuggestionIds.includes(suggestionId)) return true;
+  const closed = await listClosedPolls();
+  return closed.some((poll) => poll.pendingResult?.candidateSuggestionIds.includes(suggestionId));
+}
+
 // Polls this place won, oldest first — i.e. the trips made there.
 export async function listWinsForSuggestion(suggestionId: string): Promise<PollDocWithId[]> {
   const snap = await polls.where("winnerSuggestionId", "==", suggestionId).get();

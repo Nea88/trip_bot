@@ -2,17 +2,18 @@ import type { Context } from "grammy";
 import { isValidTime, isValidTimezone } from "../utils/time.js";
 import { setReminderSchedule } from "../services/groupConfig.js";
 import { rescheduleReminderFromConfig } from "../scheduler/scheduler.js";
+import { env } from "../config/env.js";
 
-const USAGE = "Использование: /set_reminder_time <ЧЧ:ММ> <IANA таймзона>\nПример: /set_reminder_time 12:00 Europe/Moscow";
+const USAGE = `Использование: /set_reminder_time <ЧЧ:ММ> [IANA таймзона]\nБез таймзоны — ${env.defaultTimezone}.\nПример: /set_reminder_time 12:00 Europe/Moscow`;
 
 export async function setReminderTimeCommand(ctx: Context): Promise<void> {
   const args = (ctx.match?.toString().trim() ?? "").split(/\s+/).filter(Boolean);
-  if (args.length !== 2) {
+  if (args.length !== 1 && args.length !== 2) {
     await ctx.reply(USAGE);
     return;
   }
 
-  const [timeArg, tzArg] = args;
+  const [timeArg, tzArg = env.defaultTimezone] = args;
   if (!isValidTime(timeArg)) {
     await ctx.reply(`Неверный формат времени "${timeArg}", ожидается ЧЧ:ММ.\n${USAGE}`);
     return;

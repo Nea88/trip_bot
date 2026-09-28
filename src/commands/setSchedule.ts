@@ -2,17 +2,18 @@ import type { Context } from "grammy";
 import { parseDayOfWeek, isValidTime, isValidTimezone } from "../utils/time.js";
 import { setSchedule } from "../services/groupConfig.js";
 import { rescheduleFromConfig } from "../scheduler/scheduler.js";
+import { env } from "../config/env.js";
 
-const USAGE = "Использование: /set_schedule <день недели> <ЧЧ:ММ> <IANA таймзона>\nПример: /set_schedule friday 10:00 Europe/Moscow";
+const USAGE = `Использование: /set_schedule <день недели> <ЧЧ:ММ> [IANA таймзона]\nБез таймзоны — ${env.defaultTimezone}.\nПример: /set_schedule friday 10:00 Europe/Moscow`;
 
 export async function setScheduleCommand(ctx: Context): Promise<void> {
   const args = (ctx.match?.toString().trim() ?? "").split(/\s+/).filter(Boolean);
-  if (args.length !== 3) {
+  if (args.length !== 2 && args.length !== 3) {
     await ctx.reply(USAGE);
     return;
   }
 
-  const [dayArg, timeArg, tzArg] = args;
+  const [dayArg, timeArg, tzArg = env.defaultTimezone] = args;
   const day = parseDayOfWeek(dayArg);
   if (day === null) {
     await ctx.reply(`Не распознан день недели "${dayArg}".\n${USAGE}`);

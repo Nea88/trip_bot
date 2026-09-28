@@ -4,8 +4,19 @@ import {
   getById,
   deleteSuggestion as deleteSuggestionById,
 } from "../services/suggestions.js";
+import { isSuggestionInActivePoll } from "../services/polls.js";
+import { getGroupConfig } from "../services/groupConfig.js";
 
 const CALLBACK_PREFIX = "del";
+
+function inActivePollText(seq: number): string {
+  return `#${seq} сейчас в открытом опросе или ждёт подтверждения победителя — удалить его можно после /close_poll или /cancel_poll.`;
+}
+
+async function isInActivePoll(suggestionId: string): Promise<boolean> {
+  const config = await getGroupConfig();
+  return isSuggestionInActivePoll(config.groupChatId, suggestionId);
+}
 
 export async function deleteCommand(ctx: Context): Promise<void> {
   const arg = ctx.match?.toString().trim();
@@ -18,6 +29,10 @@ export async function deleteCommand(ctx: Context): Promise<void> {
   const suggestion = await getBySeq(seq);
   if (!suggestion) {
     await ctx.reply(`Предложение #${seq} не найдено.`);
+    return;
+  }
+  if (await isInActivePoll(suggestion.id)) {
+    await ctx.reply(inActivePollText(seq));
     return;
   }
 
@@ -44,6 +59,12 @@ export async function deleteCallback(ctx: CallbackQueryContext<Context>): Promis
   const suggestion = await getById(suggestionId);
   if (!suggestion) {
     await ctx.editMessageText("Предложение уже не существует.");
+    await ctx.answerCallbackQuery();
+    return;
+  }
+  // Checked again: a poll may have been created since the confirmation was shown.
+  if (await isInActivePoll(suggestion.id)) {
+    await ctx.editMessageText(inActivePollText(suggestion.seq));
     await ctx.answerCallbackQuery();
     return;
   }
