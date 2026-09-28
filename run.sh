@@ -7,6 +7,8 @@ export FIREBASE_SERVICE_ACCOUNT_JSON
 export DEFAULT_TIMEZONE
 # Healthcheck server for the Supervisor watchdog (see config.yaml).
 export PORT=8099
+# Weekly backups also go here; /data is persistent and part of HA backups.
+export BACKUP_DIR=/data/backups
 
 BOT_TOKEN=$(bashio::config 'bot_token')
 GROUP_CHAT_ID=$(bashio::config 'group_chat_id')

@@ -4,7 +4,7 @@ import { getAllRegistrations } from "./registrations.js";
 import { sendPlaceItems, type PlaceItemRef } from "../utils/photoMessage.js";
 
 // Runs `send` for the DM of every registered user who is still a group admin.
-async function forEachAdminDm(
+export async function forEachAdminDm(
   api: Api,
   groupChatId: number,
   send: (dmChatId: number) => Promise<void>,

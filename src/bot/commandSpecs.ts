@@ -66,6 +66,8 @@ export const COMMANDS = [
     help: "/set_reminder_text <текст> — свой текст для памятки" },
   { command: "get_reminder", menu: "Посмотреть время и текст памятки", audience: "admin", where: "any",
     help: "/get_reminder — посмотреть текущее время и текст памятки" },
+  { command: "backup", menu: "Резервная копия базы (файлом)", audience: "admin", where: "dm",
+    help: "/backup — прислать резервную копию базы файлом (в личных сообщениях). Раз в неделю копия приходит сама" },
 ] as const satisfies readonly CommandSpec[];
 
 export type CommandName = (typeof COMMANDS)[number]["command"];

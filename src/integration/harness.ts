@@ -64,6 +64,7 @@ export function createFakeCtx(api: Api, options: FakeCtxOptions) {
   const replies: string[] = [];
   const edits: string[] = [];
   const callbackAnswers: (string | undefined)[] = [];
+  const documents: { document: unknown; caption?: string }[] = [];
   const chatId = options.chatId ?? GROUP_CHAT_ID;
   const ctx = {
     api,
@@ -81,6 +82,10 @@ export function createFakeCtx(api: Api, options: FakeCtxOptions) {
       edits.push(text);
       return true;
     },
+    replyWithDocument: async (document: unknown, extra?: { caption?: string }) => {
+      documents.push({ document, caption: extra?.caption });
+      return { message_id: 1 };
+    },
     answerCallbackQuery: async (answer?: { text?: string }) => {
       callbackAnswers.push(answer?.text);
       return true;
@@ -91,6 +96,7 @@ export function createFakeCtx(api: Api, options: FakeCtxOptions) {
     replies,
     edits,
     callbackAnswers,
+    documents,
     lastReply: () => replies.at(-1) ?? "",
   };
 }

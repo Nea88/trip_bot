@@ -9,6 +9,7 @@ import {
   rescheduleCloseFromConfig,
   closeMissedScheduledPoll,
   scheduleMeetReminders,
+  scheduleBackups,
   runSafely,
 } from "./scheduler/scheduler.js";
 import { getPollsWithUnpostedPendingResult } from "./services/polls.js";
@@ -40,6 +41,7 @@ async function main(): Promise<void> {
   await rescheduleCloseFromConfig(bot.api);
   scheduleTripMemories(bot.api);
   scheduleMeetReminders(bot.api);
+  scheduleBackups(bot.api);
 
   // Close before create: a missed Sunday close must happen before a missed
   // Monday creation, or the new poll would be skipped as "already open".

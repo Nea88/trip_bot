@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json",
     "lint": "oxlint --deny-warnings src",
     "test": "node --import tsx --test src/*/*.test.ts",
-    "test:integration": "npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ride-bot 'node --import tsx --import ./src/integration/setup.ts --test --test-concurrency=1 src/integration/*.itest.ts'"
+    "test:integration": "npx --yes firebase-tools@14 emulators:exec --only firestore --project demo-ride-bot 'node --import tsx --import ./src/integration/setup.ts --test --test-concurrency=1 src/integration/*.itest.ts'",
+    "restore": "tsx src/scripts/restore.ts"
   },
   "keywords": [],
   "author": "",

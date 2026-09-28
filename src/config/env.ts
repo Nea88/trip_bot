@@ -15,6 +15,9 @@ export const env = {
   firebaseServiceAccountJson: required("FIREBASE_SERVICE_ACCOUNT_JSON"),
   defaultTimezone: process.env.DEFAULT_TIMEZONE ?? "UTC",
   port: process.env.PORT ? Number(process.env.PORT) : null,
+  // Where weekly backups are also saved (the add-on sets /data/backups);
+  // unset means Telegram only.
+  backupDir: process.env.BACKUP_DIR || null,
 };
 
 if (Number.isNaN(env.groupChatId)) {

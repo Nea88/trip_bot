@@ -31,6 +31,7 @@ import {
 } from "../commands/photo.js";
 import { placeCommand } from "../commands/place.js";
 import { historyCommand } from "../commands/history.js";
+import { backupCommand } from "../commands/backup.js";
 import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
 import { COMMANDS, type CommandName } from "./commandSpecs.js";
 
@@ -60,6 +61,7 @@ const HANDLERS: Record<CommandName, (ctx: Context) => Promise<void>> = {
   set_reminder_time: setReminderTimeCommand,
   set_reminder_text: setReminderTextCommand,
   get_reminder: getReminderCommand,
+  backup: backupCommand,
 };
 
 export function createBot(): Bot {

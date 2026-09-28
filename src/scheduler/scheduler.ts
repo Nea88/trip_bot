@@ -10,6 +10,7 @@ import { notifyAdmins } from "../services/notifications.js";
 import { DEFAULT_REMINDER_TEXT } from "../constants.js";
 import { lastScheduledOccurrence, shouldCloseMissedPoll, shouldCreateMissedPoll } from "./missedPoll.js";
 import { sendTripMemories } from "../services/memories.js";
+import { runBackup } from "../services/backup.js";
 import { env } from "../config/env.js";
 
 // Daily "on this day" trip memories post, in DEFAULT_TIMEZONE.
@@ -20,6 +21,9 @@ const MEMORIES_CRON = "0 12 * * *";
 const MEET_REMINDER_CRON = "0 18 * * 5";
 const MEET_DEADLINE_CRON = "0 20 * * 5";
 const MEET_EXAMPLE = "/meet 09:00 АЗС на выезде из города";
+
+// Weekly backup: Sunday night, when nothing else is going on.
+const BACKUP_CRON = "0 3 * * 0";
 
 let currentPollTask: ScheduledTask | null = null;
 let currentReminderTask: ScheduledTask | null = null;
@@ -237,4 +241,10 @@ export function scheduleMeetReminders(api: Api): void {
   const options = { timezone: env.defaultTimezone };
   schedule(MEET_REMINDER_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, false)), options);
   schedule(MEET_DEADLINE_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, true)), options);
+}
+
+export function scheduleBackups(api: Api): void {
+  schedule(BACKUP_CRON, () => runSafely(api, "резервная копия базы", () => runBackup(api)), {
+    timezone: env.defaultTimezone,
+  });
 }
