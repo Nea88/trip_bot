@@ -5,6 +5,8 @@ export GROUP_CHAT_ID
 export FIREBASE_PROJECT_ID
 export FIREBASE_SERVICE_ACCOUNT_JSON
 export DEFAULT_TIMEZONE
+# Healthcheck server for the Supervisor watchdog (see config.yaml).
+export PORT=8099
 
 BOT_TOKEN=$(bashio::config 'bot_token')
 GROUP_CHAT_ID=$(bashio::config 'group_chat_id')

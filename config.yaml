@@ -4,13 +4,15 @@ slug: "ride_bot"
 description: "Telegram-бот для планирования групповых поездок"
 arch:
   - aarch64
-  - armv7
-  - armhf
   - amd64
-  - i386
 startup: services
 boot: auto
 init: false
+# Healthcheck from src/index.ts (PORT is set in run.sh): 503 when Telegram
+# polling stalls, so Supervisor restarts the add-on. Not exposed on the host.
+ports:
+  8099/tcp: null
+watchdog: "http://[HOST]:[PORT:8099]/"
 options:
   bot_token: ""
   group_chat_id: ""

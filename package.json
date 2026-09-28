@@ -19,7 +19,7 @@
   "dependencies": {
     "@grammyjs/auto-retry": "^2.0.2",
     "dotenv": "^17.4.2",
-    "firebase-admin": "^13.10.0",
+    "firebase-admin": "^14.5.0",
     "grammy": "^1.44.0",
     "luxon": "^3.7.2",
     "node-cron": "^4.6.0"
@@ -30,5 +30,8 @@
     "oxlint": "^1.16.0",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
