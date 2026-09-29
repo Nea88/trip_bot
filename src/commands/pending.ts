@@ -3,6 +3,8 @@ import { getById, listPendingSuggestions } from "../services/suggestions.js";
 import { listPendingBatches } from "../services/placePhotos.js";
 import { buildReviewCallbackData } from "./reviewSuggestion.js";
 import { photoReviewCallbackData } from "./photo.js";
+import { linkReviewKeyboard, linkReviewText } from "./links.js";
+import { listPendingLinks } from "../services/links.js";
 import { buildMessageLink, describeItems, sendPlaceItems } from "../utils/photoMessage.js";
 import { formatUserName } from "../utils/userName.js";
 
@@ -16,13 +18,19 @@ const MAX_SHOWN = 10;
 export async function pendingCommand(ctx: Context): Promise<void> {
   const chatId = ctx.chat?.id;
   if (chatId === undefined) return;
-  const [suggestions, batches] = await Promise.all([listPendingSuggestions(), listPendingBatches()]);
-  if (suggestions.length === 0 && batches.length === 0) {
+  const [suggestions, batches, links] = await Promise.all([
+    listPendingSuggestions(),
+    listPendingBatches(),
+    listPendingLinks(),
+  ]);
+  if (suggestions.length === 0 && batches.length === 0 && links.length === 0) {
     await ctx.reply("Ничего не ждёт модерации.");
     return;
   }
 
-  await ctx.reply(`Ждут решения: предложений — ${suggestions.length}, фото и сообщений в архив — ${batches.length}.`);
+  await ctx.reply(
+    `Ждут решения: предложений — ${suggestions.length}, фото и сообщений в архив — ${batches.length}, ссылок — ${links.length}.`,
+  );
 
   for (const s of suggestions.slice(0, MAX_SHOWN)) {
     const keyboard = new InlineKeyboard()
@@ -47,7 +55,17 @@ export async function pendingCommand(ctx: Context): Promise<void> {
     );
   }
 
-  const hidden = Math.max(0, suggestions.length - MAX_SHOWN) + Math.max(0, batches.length - MAX_SHOWN);
+  for (const link of links.slice(0, MAX_SHOWN)) {
+    await ctx.reply(linkReviewText(link), {
+      reply_markup: linkReviewKeyboard(link.id),
+      link_preview_options: { is_disabled: true },
+    });
+  }
+
+  const hidden =
+    Math.max(0, suggestions.length - MAX_SHOWN) +
+    Math.max(0, batches.length - MAX_SHOWN) +
+    Math.max(0, links.length - MAX_SHOWN);
   if (hidden > 0) {
     await ctx.reply(`Ещё ${hidden} — разберите эти и вызовите /pending снова.`);
   }

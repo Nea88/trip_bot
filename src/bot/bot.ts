@@ -37,6 +37,15 @@ import { meCommand } from "../commands/me.js";
 import { yearCommand } from "../commands/year.js";
 import { pollAnswerHandler } from "../commands/pollAnswer.js";
 import { groupMigratedHandler } from "../commands/groupMigration.js";
+import {
+  addLinkCommand,
+  deleteLinkCommand,
+  linkReviewCallback,
+  linkReviewCallbackPattern,
+  linksCommand,
+  rejectReasonHandler,
+} from "../commands/links.js";
+import { setWelcomeTextCommand, welcomeNewMembers } from "../commands/welcome.js";
 import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
 import { COMMANDS, type CommandName } from "./commandSpecs.js";
 
@@ -70,6 +79,10 @@ const HANDLERS: Record<CommandName, (ctx: Context) => Promise<void>> = {
   set_reminder_text: setReminderTextCommand,
   get_reminder: getReminderCommand,
   backup: backupCommand,
+  links: linksCommand,
+  addlink: addLinkCommand,
+  dellink: deleteLinkCommand,
+  set_welcome_text: setWelcomeTextCommand,
 };
 
 export function createBot(): Bot {
@@ -94,10 +107,14 @@ export function createBot(): Bot {
   bot.callbackQuery(closePollCallbackPattern, requireAdmin, closePollCallback);
   bot.callbackQuery(reviewCallbackPattern, requireAdmin, reviewCallback);
   bot.callbackQuery(photoReviewCallbackPattern, requireAdmin, photoReviewCallback);
+  bot.callbackQuery(linkReviewCallbackPattern, requireAdmin, linkReviewCallback);
 
   // Who voted for what — "went on the trip" means voting for the confirmed place.
   bot.on("poll_answer", pollAnswerHandler);
   bot.on("message:migrate_to_chat_id", groupMigratedHandler);
+  bot.on("message:new_chat_members", welcomeNewMembers);
+  // Admin's reply with the reason for rejecting a link (passes other text on).
+  bot.on("message:text", rejectReasonHandler);
 
   bot.catch(handleBotError);
 

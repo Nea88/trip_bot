@@ -108,6 +108,30 @@ export interface PollVote {
   updatedAt: Timestamp;
 }
 
+// A useful link for the group (/links). Members' links wait for an admin.
+export type LinkStatus = "pending" | "approved" | "rejected";
+
+export interface LinkDoc {
+  seq: number;
+  url: string;
+  urlNormalized: string;
+  description: string;
+  addedByUserId: number;
+  addedByUsername: string;
+  addedByHasUsername: boolean;
+  addedAt: Timestamp;
+  status: LinkStatus;
+  reviewedAt: Timestamp | null;
+  rejectReason: string | null;
+  // The admin's "why?" prompt, answered by replying to it.
+  rejectPromptChatId: number | null;
+  rejectPromptMessageId: number | null;
+}
+
+export interface LinkWithId extends LinkDoc {
+  id: string;
+}
+
 export interface GroupConfig {
   groupChatId: number;
   scheduleDay: number | null;
@@ -131,6 +155,8 @@ export interface GroupConfig {
   lastYearSummaryYear?: number | null;
   // ISO timestamp of the last successful weekly backup.
   lastBackupAt?: string | null;
+  // Custom text for the new-member welcome (/set_welcome_text); null = default.
+  welcomeText?: string | null;
   updatedAt: Timestamp;
 }
 

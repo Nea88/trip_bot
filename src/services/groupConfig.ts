@@ -102,6 +102,10 @@ export async function markMemoriesSent(isoDate: string): Promise<void> {
   await updateConfig({ lastMemoriesSentDate: isoDate });
 }
 
+export async function setWelcomeText(text: string | null): Promise<void> {
+  await updateConfig({ welcomeText: text });
+}
+
 export async function markYearSummaryHandled(year: number): Promise<void> {
   await updateConfig({ lastYearSummaryYear: year });
 }

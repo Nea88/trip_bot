@@ -18,6 +18,7 @@ export const GROUP_CHAT_ID = env.groupChatId;
 export const ADMIN_ID = 1;
 export const ADMIN_DM = 101;
 export const USER_ID = 2;
+export const BOT_ID = 42;
 
 export interface ApiCall {
   method: string;
@@ -28,7 +29,7 @@ export interface ApiCall {
  * Fake Telegram API: records every call and answers with just enough for the
  * handlers. `voteCounts` is what stopPoll reports; ADMIN_ID is the only admin.
  */
-export function createFakeApi(options: { voteCounts?: number[] } = {}) {
+export function createFakeApi(options: { voteCounts?: number[]; unreachableChats?: number[] } = {}) {
   const calls: ApiCall[] = [];
   let nextMessageId = 1000;
   const handlers: Record<string, (...args: unknown[]) => unknown> = {
@@ -45,6 +46,10 @@ export function createFakeApi(options: { voteCounts?: number[] } = {}) {
       get: (_target, method: string) =>
         async (...args: unknown[]) => {
           calls.push({ method, args });
+          // Telegram refuses to message users who never started the bot.
+          if (method === "sendMessage" && options.unreachableChats?.includes(args[0] as number)) {
+            throw new Error("Forbidden: bot can't initiate conversation with a user");
+          }
           const handler = handlers[method];
           return handler ? handler(...args) : { message_id: nextMessageId++ };
         },
@@ -102,10 +107,11 @@ export function createFakeCtx(api: Api, options: FakeCtxOptions) {
     callbackQuery: options.callbackData ? { data: options.callbackData } : undefined,
     senderChat: options.senderChatId ? { id: options.senderChatId, type: "supergroup" } : undefined,
     update: { update_id: 1 },
+    me: { id: BOT_ID, is_bot: true, first_name: "Bot", username: "test_bot" },
     reply: async (text: string, extra?: unknown) => {
       replies.push(text);
       replyExtras.push(extra);
-      return { message_id: 1 };
+      return { message_id: 900 + replies.length, chat: { id: chatId } };
     },
     editMessageText: async (text: string) => {
       edits.push(text);
