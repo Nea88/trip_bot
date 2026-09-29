@@ -11,6 +11,7 @@ import { DEFAULT_REMINDER_TEXT } from "../constants.js";
 import { lastScheduledOccurrence, shouldCloseMissedPoll, shouldCreateMissedPoll } from "./missedPoll.js";
 import { sendTripMemories } from "../services/memories.js";
 import { runBackup } from "../services/backup.js";
+import { postYearSummary } from "../services/yearSummary.js";
 import { env } from "../config/env.js";
 
 // Daily "on this day" trip memories post, in DEFAULT_TIMEZONE.
@@ -24,6 +25,9 @@ const MEET_EXAMPLE = "/meet 09:00 АЗС на выезде из города";
 
 // Weekly backup: Sunday night, when nothing else is going on.
 const BACKUP_CRON = "0 3 * * 0";
+
+// Year in review on December 31 at noon.
+const YEAR_SUMMARY_CRON = "0 12 31 12 *";
 
 let currentPollTask: ScheduledTask | null = null;
 let currentReminderTask: ScheduledTask | null = null;
@@ -258,4 +262,10 @@ export async function stopConfigurableTasks(): Promise<void> {
   currentPollTask = null;
   currentCloseTask = null;
   currentReminderTask = null;
+}
+
+export function scheduleYearSummary(api: Api): void {
+  schedule(YEAR_SUMMARY_CRON, () => runSafely(api, "итоги года", () => postYearSummary(api)), {
+    timezone: env.defaultTimezone,
+  });
 }

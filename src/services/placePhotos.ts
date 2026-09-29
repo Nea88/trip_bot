@@ -197,3 +197,13 @@ export async function listPendingBatches(): Promise<PendingBatch[]> {
   const addedAt = (b: PendingBatch) => Math.min(...b.items.map((p) => p.addedAt.toMillis()));
   return [...batches.values()].sort((a, b) => addedAt(a) - addedAt(b));
 }
+
+export async function listByAuthor(userId: number): Promise<PlacePhotoWithId[]> {
+  const snap = await placePhotos.where("addedByUserId", "==", userId).get();
+  return snap.docs.map(withId);
+}
+
+export async function listAllApproved(): Promise<PlacePhotoWithId[]> {
+  const snap = await placePhotos.where("status", "==", "approved").get();
+  return snap.docs.map(withId);
+}

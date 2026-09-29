@@ -15,6 +15,13 @@ export async function getOpenPoll(groupChatId: number): Promise<PollDocWithId | 
   return { id: doc.id, ...(doc.data() as PollDoc) };
 }
 
+export async function getPollByTelegramId(telegramPollId: string): Promise<PollDocWithId | null> {
+  const snap = await polls.where("telegramPollId", "==", telegramPollId).limit(1).get();
+  if (snap.empty) return null;
+  const doc = snap.docs[0];
+  return { id: doc.id, ...(doc.data() as PollDoc) };
+}
+
 // Pending results whose confirmation message was never posted (e.g. the bot
 // died right after stopPoll). Ones already posted are skipped so restarts
 // don't spam the group with duplicate confirmation messages.

@@ -33,6 +33,9 @@ import { placeCommand } from "../commands/place.js";
 import { historyCommand } from "../commands/history.js";
 import { backupCommand } from "../commands/backup.js";
 import { pendingCommand } from "../commands/pending.js";
+import { meCommand } from "../commands/me.js";
+import { yearCommand } from "../commands/year.js";
+import { pollAnswerHandler } from "../commands/pollAnswer.js";
 import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
 import { COMMANDS, type CommandName } from "./commandSpecs.js";
 
@@ -43,6 +46,8 @@ const HANDLERS: Record<CommandName, (ctx: Context) => Promise<void>> = {
   photo: photoCommand,
   place: placeCommand,
   history: historyCommand,
+  year: yearCommand,
+  me: meCommand,
   start: startCommand,
   help: helpCommand,
   pending: pendingCommand,
@@ -88,6 +93,9 @@ export function createBot(): Bot {
   bot.callbackQuery(closePollCallbackPattern, requireAdmin, closePollCallback);
   bot.callbackQuery(reviewCallbackPattern, requireAdmin, reviewCallback);
   bot.callbackQuery(photoReviewCallbackPattern, requireAdmin, photoReviewCallback);
+
+  // Who voted for what — "went on the trip" means voting for the confirmed place.
+  bot.on("poll_answer", pollAnswerHandler);
 
   bot.catch(handleBotError);
 

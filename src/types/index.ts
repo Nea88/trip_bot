@@ -95,6 +95,19 @@ export interface PollDocWithId extends PollDoc {
   id: string;
 }
 
+// A member's current answer in one of our polls (from Telegram poll_answer
+// updates; the poll is non-anonymous). Doc id: `${pollId}_${userId}`.
+// "Went on the trip" = voted for the place the group was confirmed to go to.
+export interface PollVote {
+  pollId: string;
+  userId: number;
+  username: string;
+  hasUsername: boolean;
+  // Indexes into the poll's optionSuggestionIds.
+  optionIndexes: number[];
+  updatedAt: Timestamp;
+}
+
 export interface GroupConfig {
   groupChatId: number;
   scheduleDay: number | null;

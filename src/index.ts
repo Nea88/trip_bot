@@ -10,6 +10,7 @@ import {
   closeMissedScheduledPoll,
   scheduleMeetReminders,
   scheduleBackups,
+  scheduleYearSummary,
   runSafely,
 } from "./scheduler/scheduler.js";
 import { getPollsWithUnpostedPendingResult } from "./services/polls.js";
@@ -42,6 +43,7 @@ async function main(): Promise<void> {
   scheduleTripMemories(bot.api);
   scheduleMeetReminders(bot.api);
   scheduleBackups(bot.api);
+  scheduleYearSummary(bot.api);
 
   // Close before create: a missed Sunday close must happen before a missed
   // Monday creation, or the new poll would be skipped as "already open".
@@ -75,6 +77,8 @@ async function main(): Promise<void> {
   }
 
   bot.start({
+    // poll_answer is how the bot learns who voted for what (see pollAnswer.ts).
+    allowed_updates: ["message", "callback_query", "poll_answer"],
     onStart: (botInfo) => {
       console.log(`[bot] Started as @${botInfo.username}`);
     },

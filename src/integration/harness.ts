@@ -71,6 +71,17 @@ export interface FakeCtxOptions {
   message?: Record<string, unknown>;
 }
 
+// A poll_answer update as Telegram sends it (empty optionIds = vote retracted).
+export function pollAnswerCtx(telegramPollId: string, userId: number, optionIds: number[]): Context {
+  return {
+    pollAnswer: {
+      poll_id: telegramPollId,
+      user: { id: userId, is_bot: false, first_name: "Тест", username: `user${userId}` },
+      option_ids: optionIds,
+    },
+  } as unknown as Context;
+}
+
 // The subset of grammY's Context the handlers use, with replies captured.
 export function createFakeCtx(api: Api, options: FakeCtxOptions) {
   const replies: string[] = [];
