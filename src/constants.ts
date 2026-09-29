@@ -12,4 +12,6 @@ export const MAX_REAL_POLL_OPTIONS = MAX_POLL_OPTIONS_TOTAL - 1;
 // Default text for the every-other-day reminder to suggest a destination; overridable
 // via /set_reminder_text, but shown as-is until an admin changes it.
 export const DEFAULT_REMINDER_TEXT =
-  "Куда бы вы хотели съездить в следующий раз? Если есть идея — напишите /suggest <куда>, например: /suggest на дачу. Посмотреть, что уже накидали — /list. Чем больше вариантов наберётся к следующему опросу, тем лучше!";
+  "Куда поедем в следующий раз? Есть идея — напишите /suggest <куда>, например: /suggest Арагац. Что уже предложили — /list. Чем больше вариантов к следующему опросу, тем лучше!\n\n" +
+  "📸 После поездки сохраняйте фото: ответьте на сообщение с фото командой /photo <номер места> — оно попадёт в архив места (/place <номер>).\n" +
+  "🏍 Ваша статистика — /me, история поездок — /history.";
