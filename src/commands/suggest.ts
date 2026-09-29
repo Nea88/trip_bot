@@ -39,9 +39,10 @@ export async function suggestCommand(ctx: Context): Promise<void> {
     return;
   }
 
-  const userId = ctx.from!.id;
-  const hasUsername = Boolean(ctx.from!.username);
-  const username = ctx.from!.username ?? ctx.from!.first_name ?? "кто-то";
+  if (!ctx.from) return;
+  const userId = ctx.from.id;
+  const hasUsername = Boolean(ctx.from.username);
+  const username = ctx.from.username ?? ctx.from.first_name ?? "кто-то";
 
   const config = await getGroupConfig();
   const isAdmin = await isAdminSender(ctx, config.groupChatId);

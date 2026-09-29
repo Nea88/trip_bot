@@ -4,9 +4,10 @@ import { registerPrivateAdminCommands } from "../bot/commands.js";
 import { getGroupConfig } from "../services/groupConfig.js";
 
 export async function startCommand(ctx: Context): Promise<void> {
-  const userId = ctx.from!.id;
-  const chatId = ctx.chat!.id;
-  const username = ctx.from!.username ?? ctx.from!.first_name ?? "друг";
+  if (!ctx.from || !ctx.chat) return;
+  const userId = ctx.from.id;
+  const chatId = ctx.chat.id;
+  const username = ctx.from.username ?? ctx.from.first_name ?? "друг";
 
   await registerForNotifications(userId, chatId, username);
 

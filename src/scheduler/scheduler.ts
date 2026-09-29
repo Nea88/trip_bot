@@ -9,6 +9,7 @@ import { CLOSE_OUTCOME_TEXT, closeOpenPoll } from "../services/pollClosing.js";
 import { notifyAdmins } from "../services/notifications.js";
 import { DEFAULT_REMINDER_TEXT } from "../constants.js";
 import { lastScheduledOccurrence, shouldCloseMissedPoll, shouldCreateMissedPoll } from "./missedPoll.js";
+import { backupDue, yearSummaryDue } from "./catchUp.js";
 import { sendTripMemories } from "../services/memories.js";
 import { runBackup } from "../services/backup.js";
 import { postYearSummary } from "../services/yearSummary.js";
@@ -271,4 +272,22 @@ export function scheduleYearSummary(api: Api): void {
   fixedTasks.push(schedule(YEAR_SUMMARY_CRON, () => runSafely(api, "итоги года", () => postYearSummary(api)), {
     timezone: env.defaultTimezone,
   }));
+}
+
+// Startup catch-up: the Dec 31 post, if the bot was down at that moment.
+export async function catchUpYearSummary(api: Api): Promise<void> {
+  const config = await getGroupConfig();
+  const year = yearSummaryDue(now(), env.defaultTimezone, config.lastYearSummaryYear ?? null);
+  if (year === null) return;
+  console.log(`[scheduler] Year summary for ${year} was missed — posting it now.`);
+  await postYearSummary(api, year);
+}
+
+// Startup catch-up: a weekly backup missed while the bot was down.
+export async function catchUpBackup(api: Api): Promise<void> {
+  const config = await getGroupConfig();
+  const last = config.lastBackupAt ? DateTime.fromISO(config.lastBackupAt) : null;
+  if (!backupDue(now(), last)) return;
+  console.log("[scheduler] Weekly backup is overdue — making it now.");
+  await runBackup(api);
 }

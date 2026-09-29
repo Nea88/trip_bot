@@ -4,7 +4,7 @@ import type { Timestamp } from "firebase-admin/firestore";
 import { env } from "../config/env.js";
 import { now } from "../utils/clock.js";
 import { formatYearSummary } from "../utils/yearSummary.js";
-import { getGroupConfig } from "./groupConfig.js";
+import { getGroupConfig, markYearSummaryHandled } from "./groupConfig.js";
 import { listAllSuggestions } from "./suggestions.js";
 import { listAllApproved } from "./placePhotos.js";
 import { listVotes } from "./pollVotes.js";
@@ -28,11 +28,15 @@ export async function buildYearSummary(year: number): Promise<string> {
   });
 }
 
-// December 31: post the year in review, unless there were no trips at all.
-export async function postYearSummary(api: Api): Promise<void> {
-  const year = now().setZone(env.defaultTimezone).year;
+/**
+ * December 31 (or a catch-up in early January): post the year in review,
+ * unless there were no trips at all. Either way the year counts as handled.
+ */
+export async function postYearSummary(api: Api, year = now().setZone(env.defaultTimezone).year): Promise<void> {
   const text = await buildYearSummary(year);
-  if (!text.startsWith("🎉")) return;
-  const config = await getGroupConfig();
-  await api.sendMessage(config.groupChatId, text);
+  if (text.startsWith("🎉")) {
+    const config = await getGroupConfig();
+    await api.sendMessage(config.groupChatId, text);
+  }
+  await markYearSummaryHandled(year);
 }

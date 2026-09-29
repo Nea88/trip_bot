@@ -3,7 +3,7 @@ import { db } from "../firebase/firestore.js";
 import { env } from "../config/env.js";
 import { now } from "../utils/clock.js";
 import { formatIsoDate } from "../utils/tripDate.js";
-import { getGroupConfig } from "./groupConfig.js";
+import { getGroupConfig, markBackupDone } from "./groupConfig.js";
 import { forEachAdminDm } from "./notifications.js";
 import {
   BACKUP_FORMAT_VERSION,
@@ -98,4 +98,5 @@ export async function runBackup(api: Api, dir: string | null = env.backupDir): P
       caption: prepared.caption,
     });
   });
+  await markBackupDone(now().toISO()!);
 }

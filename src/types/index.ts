@@ -133,6 +133,10 @@ export interface GroupConfig {
   // ISO date (in DEFAULT_TIMEZONE) of the last "on this day" trip memories
   // post; missing until the first one.
   lastMemoriesSentDate?: string | null;
+  // Year whose summary was already handled (posted, or skipped: no trips).
+  lastYearSummaryYear?: number | null;
+  // ISO timestamp of the last successful weekly backup.
+  lastBackupAt?: string | null;
   updatedAt: Timestamp;
 }
 

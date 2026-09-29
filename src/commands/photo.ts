@@ -43,7 +43,10 @@ export async function photoCommand(ctx: Context): Promise<void> {
     return;
   }
 
-  const { items: photos, albumIncomplete } = collectReplyItems(reply, ctx.chat!.id, mediaGroupCache);
+  const chatId = ctx.chat?.id;
+  const from = ctx.from;
+  if (chatId === undefined || !from) return;
+  const { items: photos, albumIncomplete } = collectReplyItems(reply, chatId, mediaGroupCache);
   const albumNote = albumIncomplete
     ? `\nАльбом целиком не нашёл — ответьте /photo ${seq} на остальные фото из него.`
     : "";
@@ -58,7 +61,6 @@ export async function photoCommand(ctx: Context): Promise<void> {
   const place = `#${seq} «${suggestion.text}»`;
   const what = describeItems(fresh);
 
-  const from = ctx.from!;
   const author = {
     userId: from.id,
     username: from.username ?? from.first_name ?? "кто-то",
@@ -137,7 +139,9 @@ export async function unphotoCommand(ctx: Context): Promise<void> {
   const photo = largestPhoto(reply);
   const removed = photo
     ? await removeApprovedByFileUniqueId(photo.file_unique_id)
-    : await removeApprovedBySource(ctx.chat!.id, reply.message_id);
+    : ctx.chat
+      ? await removeApprovedBySource(ctx.chat.id, reply.message_id)
+      : 0;
   await ctx.reply(
     removed > 0
       ? "Убрано из архива."

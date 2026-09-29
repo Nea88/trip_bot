@@ -14,6 +14,8 @@ const MAX_SHOWN = 10;
  * original DM notifications — for admins who missed or never got them.
  */
 export async function pendingCommand(ctx: Context): Promise<void> {
+  const chatId = ctx.chat?.id;
+  if (chatId === undefined) return;
   const [suggestions, batches] = await Promise.all([listPendingSuggestions(), listPendingBatches()]);
   if (suggestions.length === 0 && batches.length === 0) {
     await ctx.reply("Ничего не ждёт модерации.");
@@ -35,7 +37,7 @@ export async function pendingCommand(ctx: Context): Promise<void> {
   for (const batch of batches.slice(0, MAX_SHOWN)) {
     const place = await getById(batch.suggestionId);
     const [first] = batch.items;
-    await sendPlaceItems(ctx.api, ctx.chat!.id, batch.items);
+    await sendPlaceItems(ctx.api, chatId, batch.items);
     const keyboard = new InlineKeyboard()
       .text("Одобрить", photoReviewCallbackData(batch.batchId, "approve"))
       .text("Отклонить", photoReviewCallbackData(batch.batchId, "reject"));

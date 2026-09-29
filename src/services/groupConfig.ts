@@ -91,3 +91,11 @@ export async function markReminderSent(isoDate: string): Promise<void> {
 export async function markMemoriesSent(isoDate: string): Promise<void> {
   await updateConfig({ lastMemoriesSentDate: isoDate });
 }
+
+export async function markYearSummaryHandled(year: number): Promise<void> {
+  await updateConfig({ lastYearSummaryYear: year });
+}
+
+export async function markBackupDone(isoTimestamp: string): Promise<void> {
+  await updateConfig({ lastBackupAt: isoTimestamp });
+}

@@ -7,7 +7,8 @@ import { formatUserName } from "../utils/userName.js";
 import { formatUserStats } from "../utils/userStats.js";
 
 export async function meCommand(ctx: Context): Promise<void> {
-  const from = ctx.from!;
+  const from = ctx.from;
+  if (!from) return;
   const [suggestions, trips, votes, archive] = await Promise.all([
     listAllSuggestions(),
     listTrips(),

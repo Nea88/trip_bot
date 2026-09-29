@@ -13,6 +13,8 @@ import {
   scheduleYearSummary,
   runSafely,
   stopAllTasks,
+  catchUpYearSummary,
+  catchUpBackup,
 } from "./scheduler/scheduler.js";
 import { getPollsWithUnpostedPendingResult } from "./services/polls.js";
 import { postPendingResultMessage } from "./services/pollClosing.js";
@@ -54,6 +56,8 @@ async function main(): Promise<void> {
   await runSafely(bot.api, "создание пропущенного опроса при запуске", () =>
     createMissedScheduledPoll(bot.api),
   );
+  await runSafely(bot.api, "пропущенные итоги года", () => catchUpYearSummary(bot.api));
+  await runSafely(bot.api, "пропущенная резервная копия", () => catchUpBackup(bot.api));
 
   const pending = await getPollsWithUnpostedPendingResult();
   for (const poll of pending) {
