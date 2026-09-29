@@ -11,15 +11,18 @@ import { env } from "../config/env.js";
 import { DateTime } from "luxon";
 import { pluralRu } from "../utils/plural.js";
 import { formatUserName } from "../utils/userName.js";
+import { ridersOf } from "../utils/participation.js";
+import { listVotes } from "../services/pollVotes.js";
 
 const MAX_SHOWN_TRIPS = 10;
 const TOP_LIMIT = 5;
 
 export async function historyCommand(ctx: Context): Promise<void> {
-  const [polls, suggestions, photoSources] = await Promise.all([
+  const [polls, suggestions, photoSources, votes] = await Promise.all([
     listClosedPolls(),
     listAllSuggestions(),
     getFirstApprovedPhotoSources(),
+    listVotes(),
   ]);
 
   // "#12 Дача 📷 5 · фото" — the link opens the place's first photo in the group.
@@ -33,10 +36,18 @@ export async function historyCommand(ctx: Context): Promise<void> {
   const { trips, topAuthors, topLosers } = computeHistory(
     polls.map((p) => {
       const tripDate = pollTripDate(p, env.defaultTimezone);
+      const riders =
+        p.winnerSuggestionId && tripDate
+          ? ridersOf(
+              { pollId: p.id, suggestionId: p.winnerSuggestionId, tripDate, optionSuggestionIds: p.optionSuggestionIds },
+              votes,
+            ).length
+          : 0;
       return {
         optionSuggestionIds: p.optionSuggestionIds,
         winnerSuggestionId: p.winnerSuggestionId,
         closedAt: tripDate ? DateTime.fromISO(tripDate).toJSDate() : null,
+        riders,
       };
     }),
     suggestions.map((s) => ({ ...s, addedAt: s.addedAt?.toDate() ?? null })),
@@ -54,10 +65,10 @@ export async function historyCommand(ctx: Context): Promise<void> {
         ? `Поездки (всего ${trips.length}, последние ${shown.length}):`
         : `Поездки (${trips.length}):`,
     );
-    for (const { date, suggestion } of shown) {
+    for (const { date, suggestion, riders } of shown) {
       const when = date ? date.toLocaleDateString("ru-RU") : "дата неизвестна";
       const place = suggestion ? formatPlace(suggestion) : "(место удалено)";
-      lines.push(`• ${when} — ${place}`);
+      lines.push(`• ${when} — ${place}${riders > 0 ? ` · ездили ${riders}` : ""}`);
     }
   }
 

@@ -108,6 +108,6 @@ export function formatYearSummary(year: number, input: YearSummaryInput): string
     topArchivists.forEach((a, i) => lines.push(`${i + 1}. ${a.label} — ${a.count}`));
   }
 
-  lines.push("", "Спасибо всем, кто ездил! До встречи в новом сезоне 🏍");
+  lines.push("", "Спасибо всем, кто ездил! До встречи в новом году 🏍");
   return lines.join("\n");
 }

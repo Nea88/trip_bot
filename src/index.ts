@@ -11,6 +11,7 @@ import {
   scheduleMeetReminders,
   scheduleBackups,
   scheduleYearSummary,
+  scheduleWeekendNudges,
   runSafely,
   stopAllTasks,
   catchUpYearSummary,
@@ -47,6 +48,7 @@ async function main(): Promise<void> {
   scheduleMeetReminders(bot.api);
   scheduleBackups(bot.api);
   scheduleYearSummary(bot.api);
+  scheduleWeekendNudges(bot.api);
 
   // Close before create: a missed Sunday close must happen before a missed
   // Monday creation, or the new poll would be skipped as "already open".

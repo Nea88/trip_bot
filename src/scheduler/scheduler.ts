@@ -13,6 +13,7 @@ import { backupDue, yearSummaryDue } from "./catchUp.js";
 import { sendTripMemories } from "../services/memories.js";
 import { runBackup } from "../services/backup.js";
 import { postYearSummary } from "../services/yearSummary.js";
+import { postStartDayReminder, remindNonVoters } from "../services/weekendNudges.js";
 import { env } from "../config/env.js";
 
 // Daily "on this day" trip memories post, in DEFAULT_TIMEZONE.
@@ -23,6 +24,11 @@ const MEMORIES_CRON = "0 12 * * *";
 const MEET_REMINDER_CRON = "0 18 * * 5";
 const MEET_DEADLINE_CRON = "0 20 * * 5";
 const MEET_EXAMPLE = "/meet 09:00 АЗС на выезде из города";
+
+// Friday noon: nudge regulars who haven't voted, before the start is set by 20:00.
+const NON_VOTERS_CRON = "0 12 * * 5";
+// Saturday morning: today's start, weather and map pin.
+const START_DAY_CRON = "0 7 * * 6";
 
 // Weekly backup: Sunday night, when nothing else is going on.
 const BACKUP_CRON = "0 3 * * 0";
@@ -290,4 +296,10 @@ export async function catchUpBackup(api: Api): Promise<void> {
   if (!backupDue(now(), last)) return;
   console.log("[scheduler] Weekly backup is overdue — making it now.");
   await runBackup(api);
+}
+
+export function scheduleWeekendNudges(api: Api): void {
+  const options = { timezone: env.defaultTimezone };
+  fixedTasks.push(schedule(NON_VOTERS_CRON, () => runSafely(api, "напоминание проголосовать", () => remindNonVoters(api)), options));
+  fixedTasks.push(schedule(START_DAY_CRON, () => runSafely(api, "утреннее напоминание о старте", () => postStartDayReminder(api)), options));
 }

@@ -5,6 +5,8 @@ export interface HistoryPoll {
   optionSuggestionIds: (string | null)[];
   winnerSuggestionId: string | null;
   closedAt: Date | null;
+  // How many members went (voted for the confirmed place); 0 if unknown.
+  riders?: number;
 }
 
 export interface HistorySuggestion {
@@ -23,6 +25,7 @@ export interface Trip {
   date: Date | null;
   // null when the place was deleted after the trip.
   suggestion: HistorySuggestion | null;
+  riders: number;
 }
 
 export interface AuthorStats {
@@ -60,7 +63,7 @@ export function computeHistory(
   const decided = polls.filter((p) => p.winnerSuggestionId !== null);
 
   const trips: Trip[] = decided
-    .map((p) => ({ date: p.closedAt, suggestion: byId.get(p.winnerSuggestionId!) ?? null }))
+    .map((p) => ({ date: p.closedAt, suggestion: byId.get(p.winnerSuggestionId!) ?? null, riders: p.riders ?? 0 }))
     .sort((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0));
 
   // Keyed by user id; the name comes from their most recent suggestion.

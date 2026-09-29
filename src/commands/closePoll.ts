@@ -11,6 +11,10 @@ import {
 } from "../services/pollClosing.js";
 import { env } from "../config/env.js";
 import { formatIsoDate, tripDateFor } from "../utils/tripDate.js";
+import { ridersOf } from "../utils/participation.js";
+import { mentionHtml } from "../utils/userName.js";
+import { escapeHtml } from "../utils/html.js";
+import { listVotesForPoll } from "../services/pollVotes.js";
 
 export async function closePollCommand(ctx: Context): Promise<void> {
   const config = await getGroupConfig();
@@ -77,9 +81,17 @@ export async function closePollCallback(ctx: CallbackQueryContext<Context>): Pro
   await excludeSuggestion(suggestionId);
   await ctx.editMessageText(`Отмечено: ${formatIsoDate(tripDate)} съездили в "${suggestion.text}".`);
   await ctx.answerCallbackQuery();
+  // Ask the people who went (voted for this place) by name — a direct
+  // mention gets far more photos into the archive than a general request.
+  const trip = { pollId, suggestionId, tripDate, optionSuggestionIds: poll.optionSuggestionIds };
+  const riders = ridersOf(trip, await listVotesForPoll(pollId));
+  const mentions = riders.map((r) => mentionHtml(r.userId, r.username)).join(", ");
+  const photoAsk = `ответьте на фото с поездки командой /photo ${suggestion.seq} — они попадут в архив места (/place ${suggestion.seq}).`;
   await ctx.api.sendMessage(
     poll.groupChatId,
-    `Съездили в "${suggestion.text}"! Сохраните фото с поездки: ответьте на них командой /photo ${suggestion.seq} — они попадут в архив места (/place ${suggestion.seq}).`,
+    `Съездили в «${escapeHtml(suggestion.text)}»!\n` +
+      (riders.length > 0 ? `${mentions}, вы ездили — ${photoAsk}` : `Сохраните фото: ${photoAsk}`),
+    { parse_mode: "HTML" },
   );
 }
 

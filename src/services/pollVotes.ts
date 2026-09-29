@@ -39,3 +39,8 @@ export async function listVotesByUser(userId: number): Promise<PollVote[]> {
   const snap = await votes.where("userId", "==", userId).get();
   return snap.docs.map((doc) => doc.data() as PollVote);
 }
+
+export async function listVotesForPoll(pollId: string): Promise<PollVote[]> {
+  const snap = await votes.where("pollId", "==", pollId).get();
+  return snap.docs.map((doc) => doc.data() as PollVote);
+}

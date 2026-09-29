@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { topRiders, tripsJoined, votedForTrip, type Trip, type VoteRecord } from "./participation.js";
+import { missingVoters, ridersOf, topRiders, tripsJoined, votedForTrip, type Trip, type VoteRecord } from "./participation.js";
 
 // Poll p1: [a, b, Мимокрокодил], went to b. Poll p2: [c, a, Мимокрокодил], went to a.
 const trips: Trip[] = [
@@ -37,4 +37,16 @@ test("topRiders ranks by trips joined", () => {
       ["u2", 1],
     ],
   );
+});
+
+test("ridersOf lists who voted for the place the group went to", () => {
+  const votes = [vote("p1", 1, 1), vote("p1", 2, 0), vote("p1", 3, 1), vote("p2", 4, 1)];
+  assert.deepEqual(ridersOf(trips[1], votes).map((v) => v.userId), [1, 3]);
+});
+
+test("missingVoters: regulars from earlier polls who haven't voted in this one", () => {
+  const votes = [vote("p1", 1, 1), vote("p1", 2, 0), vote("p2", 2, 1), vote("p1", 3, 2), vote("p2", 5, 0)];
+  // In p2: 2 and 5 voted. Regulars 1 and 3 haven't; 5 is new (only p2) and did vote.
+  assert.deepEqual(missingVoters(votes, "p2").map((v) => v.userId), [1, 3]);
+  assert.deepEqual(missingVoters([], "p2"), []);
 });

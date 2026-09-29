@@ -52,3 +52,21 @@ export function topRiders(trips: Trip[], votes: VoteRecord[]): Rider[] {
     .map(({ userId, username, hasUsername, trips }) => ({ userId, username, hasUsername, trips }))
     .sort((a, b) => b.trips - a.trips);
 }
+
+// Members who voted for the trip's place — the ones who went.
+export function ridersOf(trip: Trip, votes: VoteRecord[]): VoteRecord[] {
+  return votes.filter((vote) => votedForTrip(trip, vote));
+}
+
+/**
+ * Regulars (voted in any earlier poll) who haven't voted in this one yet,
+ * with the name from their latest vote.
+ */
+export function missingVoters(votes: VoteRecord[], pollId: string): VoteRecord[] {
+  const votedNow = new Set(votes.filter((v) => v.pollId === pollId).map((v) => v.userId));
+  const regulars = new Map<number, VoteRecord>();
+  for (const vote of votes) {
+    if (vote.pollId !== pollId && !votedNow.has(vote.userId)) regulars.set(vote.userId, vote);
+  }
+  return [...regulars.values()].sort((a, b) => a.username.localeCompare(b.username));
+}
