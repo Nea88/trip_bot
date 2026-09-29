@@ -49,6 +49,18 @@ test("/create_poll uses the 9 newest places plus Мимокрокодил and pi
   assert.match(again.lastReply(), /уже открыт/);
 });
 
+test("the next poll rotates in places that haven't been shown", async () => {
+  await addPlaces(12); // first poll shows места 4–12
+  const first = await openPoll([]);
+  assert.deepEqual((first.callsTo("sendPoll")[0].args[2] as string[]).slice(0, 2), ["место 4", "место 5"]);
+  await cancelPollCommand(createFakeCtx(first.api, { userId: ADMIN_ID }).ctx);
+
+  const second = await openPoll([]);
+  const options = second.callsTo("sendPoll")[0].args[2] as string[];
+  // места 1–3 were never shown → in; the other 6 slots go to the newest of the rest.
+  assert.deepEqual(options, ["место 1", "место 2", "место 3", "место 7", "место 8", "место 9", "место 10", "место 11", "место 12", MIMOKROKODIL_TEXT]);
+});
+
 test("/close_poll → confirm: the place is excluded, the trip dated and announced once", async () => {
   await addPlaces(2);
   const { api, callsTo } = await openPoll([1, 3, 0]); // место 1, место 2, Мимокрокодил

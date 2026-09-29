@@ -123,6 +123,11 @@ export async function getLatestPollCreatedAt(): Promise<Date | null> {
   return (snap.docs[0].data() as PollDoc).createdAt?.toDate() ?? null;
 }
 
+export async function listAllPolls(): Promise<PollDocWithId[]> {
+  const snap = await polls.get();
+  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as PollDoc) }));
+}
+
 export async function listClosedPolls(): Promise<PollDocWithId[]> {
   const snap = await polls.where("status", "==", "closed").get();
   return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as PollDoc) }));
