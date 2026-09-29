@@ -55,6 +55,11 @@ export async function closePollCallback(ctx: CallbackQueryContext<Context>): Pro
   }
 
   const suggestionId = parts[3];
+  if (!poll.pendingResult.candidateSuggestionIds.includes(suggestionId)) {
+    await ctx.editMessageText("Эта кнопка устарела — такого варианта нет среди итогов опроса.");
+    await ctx.answerCallbackQuery();
+    return;
+  }
   const suggestion = await getSuggestionById(suggestionId);
   if (!suggestion) {
     await ctx.editMessageText("Это предложение больше не существует.");

@@ -1,4 +1,4 @@
-import type { Api } from "grammy";
+import type { Api, Context } from "grammy";
 
 const ADMIN_STATUSES = new Set(["creator", "administrator"]);
 const CACHE_TTL_MS = 45_000;
@@ -27,4 +27,15 @@ export async function isGroupAdmin(
   const isAdmin = ADMIN_STATUSES.has(member.status);
   cache.set(userId, { isAdmin, expiresAt: Date.now() + CACHE_TTL_MS });
   return isAdmin;
+}
+
+/**
+ * Whether the sender of this update is a group admin. Covers admins posting
+ * anonymously "as the group": their messages carry sender_chat = the group
+ * and a placeholder bot as `from`.
+ */
+export async function isAdminSender(ctx: Context, groupChatId: number): Promise<boolean> {
+  if (ctx.senderChat?.id === groupChatId) return true;
+  const userId = ctx.from?.id;
+  return userId ? isGroupAdmin(ctx.api, groupChatId, userId) : false;
 }

@@ -3,14 +3,16 @@ import { listActiveSuggestions } from "./suggestions.js";
 import { createPoll, getOpenPoll, listAllPolls } from "./polls.js";
 import { lastShownAtFromPolls, pickPollOptions } from "../utils/rotation.js";
 import type { PollDocWithId } from "../types/index.js";
+import { acquireLock, releaseLock } from "./locks.js";
 import { MAX_REAL_POLL_OPTIONS, MIMOKROKODIL_TEXT } from "../constants.js";
 
 export type CreatePollResult =
   | { kind: "already_open" }
+  | { kind: "in_progress" }
   | { kind: "no_suggestions" }
   | { kind: "created"; poll: PollDocWithId; optionCount: number };
 
-export async function createPollIfPossible(
+async function createPollUnlocked(
   api: Api,
   groupChatId: number,
 ): Promise<CreatePollResult> {
@@ -57,4 +59,18 @@ export async function createPollIfPossible(
   }
 
   return { kind: "created", poll, optionCount: optionTexts.length };
+}
+
+// Poll creation can be triggered by the schedule, the startup catch-up and
+// /create_poll at once; the lock makes sure only one of them sends a poll.
+const CREATE_LOCK = "pollCreation";
+const CREATE_LOCK_TTL_MS = 2 * 60 * 1000;
+
+export async function createPollIfPossible(api: Api, groupChatId: number): Promise<CreatePollResult> {
+  if (!(await acquireLock(CREATE_LOCK, CREATE_LOCK_TTL_MS))) return { kind: "in_progress" };
+  try {
+    return await createPollUnlocked(api, groupChatId);
+  } finally {
+    await releaseLock(CREATE_LOCK);
+  }
 }

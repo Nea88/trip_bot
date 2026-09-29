@@ -32,6 +32,8 @@ const YEAR_SUMMARY_CRON = "0 12 31 12 *";
 let currentPollTask: ScheduledTask | null = null;
 let currentReminderTask: ScheduledTask | null = null;
 let currentCloseTask: ScheduledTask | null = null;
+// Fixed-time jobs (memories, meet reminders, backups, year summary).
+const fixedTasks: ScheduledTask[] = [];
 
 // Reason shown to admins: the message only — never the error object, which
 // may carry request details.
@@ -67,8 +69,8 @@ export async function runSafely(api: Api, name: string, job: () => Promise<void>
 async function runScheduledPollCreation(api: Api): Promise<void> {
   const config = await getGroupConfig();
   const result = await createPollIfPossible(api, config.groupChatId);
-  if (result.kind === "already_open") {
-    console.log("[scheduler] Skipped: a poll is already open.");
+  if (result.kind === "already_open" || result.kind === "in_progress") {
+    console.log(`[scheduler] Skipped: a poll is already ${result.kind === "already_open" ? "open" : "being created"}.`);
   } else if (result.kind === "no_suggestions") {
     console.log("[scheduler] Skipped: no active suggestions.");
   } else {
@@ -166,9 +168,9 @@ export async function rescheduleReminderFromConfig(api: Api): Promise<void> {
 
 // Started once at startup; unlike the poll and reminder, not configurable.
 export function scheduleTripMemories(api: Api): void {
-  schedule(MEMORIES_CRON, () => runSafely(api, "пост «В этот день»", () => sendTripMemories(api)), {
+  fixedTasks.push(schedule(MEMORIES_CRON, () => runSafely(api, "пост «В этот день»", () => sendTripMemories(api)), {
     timezone: env.defaultTimezone,
-  });
+  }));
 }
 
 async function runScheduledPollClose(api: Api): Promise<void> {
@@ -243,29 +245,30 @@ export async function remindAboutMeet(api: Api, deadlinePassed: boolean): Promis
 
 export function scheduleMeetReminders(api: Api): void {
   const options = { timezone: env.defaultTimezone };
-  schedule(MEET_REMINDER_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, false)), options);
-  schedule(MEET_DEADLINE_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, true)), options);
+  fixedTasks.push(schedule(MEET_REMINDER_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, false)), options));
+  fixedTasks.push(schedule(MEET_DEADLINE_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, true)), options));
 }
 
 export function scheduleBackups(api: Api): void {
-  schedule(BACKUP_CRON, () => runSafely(api, "резервная копия базы", () => runBackup(api)), {
+  fixedTasks.push(schedule(BACKUP_CRON, () => runSafely(api, "резервная копия базы", () => runBackup(api)), {
     timezone: env.defaultTimezone,
-  });
+  }));
 }
 
-// Stops the configurable schedules (poll, auto-close, reminder) — for tests,
-// which would otherwise never exit with live cron timers.
-export async function stopConfigurableTasks(): Promise<void> {
-  for (const task of [currentPollTask, currentCloseTask, currentReminderTask]) {
+// Stops every cron job — on shutdown, and in tests, which would otherwise
+// never exit with live cron timers.
+export async function stopAllTasks(): Promise<void> {
+  for (const task of [currentPollTask, currentCloseTask, currentReminderTask, ...fixedTasks]) {
     await task?.stop();
   }
   currentPollTask = null;
   currentCloseTask = null;
   currentReminderTask = null;
+  fixedTasks.length = 0;
 }
 
 export function scheduleYearSummary(api: Api): void {
-  schedule(YEAR_SUMMARY_CRON, () => runSafely(api, "итоги года", () => postYearSummary(api)), {
+  fixedTasks.push(schedule(YEAR_SUMMARY_CRON, () => runSafely(api, "итоги года", () => postYearSummary(api)), {
     timezone: env.defaultTimezone,
-  });
+  }));
 }

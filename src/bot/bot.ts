@@ -36,6 +36,7 @@ import { pendingCommand } from "../commands/pending.js";
 import { meCommand } from "../commands/me.js";
 import { yearCommand } from "../commands/year.js";
 import { pollAnswerHandler } from "../commands/pollAnswer.js";
+import { groupMigratedHandler } from "../commands/groupMigration.js";
 import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
 import { COMMANDS, type CommandName } from "./commandSpecs.js";
 
@@ -96,6 +97,7 @@ export function createBot(): Bot {
 
   // Who voted for what — "went on the trip" means voting for the confirmed place.
   bot.on("poll_answer", pollAnswerHandler);
+  bot.on("message:migrate_to_chat_id", groupMigratedHandler);
 
   bot.catch(handleBotError);
 

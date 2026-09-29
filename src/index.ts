@@ -12,6 +12,7 @@ import {
   scheduleBackups,
   scheduleYearSummary,
   runSafely,
+  stopAllTasks,
 } from "./scheduler/scheduler.js";
 import { getPollsWithUnpostedPendingResult } from "./services/polls.js";
 import { postPendingResultMessage } from "./services/pollClosing.js";
@@ -63,8 +64,9 @@ async function main(): Promise<void> {
     }
   }
 
+  let healthServer: http.Server | null = null;
   if (env.port) {
-    http
+    healthServer = http
       .createServer((_req, res) => {
         const healthy =
           bot.isRunning() && Date.now() - lastSuccessfulPollAt < HEALTHY_POLL_WINDOW_MS;
@@ -75,6 +77,19 @@ async function main(): Promise<void> {
         console.log(`[http] Healthcheck server listening on port ${env.port}`);
       });
   }
+
+  // Home Assistant stops/updates the add-on with SIGTERM. Stopping the bot
+  // properly confirms the last processed update to Telegram — otherwise it
+  // re-delivers the last batch after restart and commands get answered twice.
+  const shutdown = async (signal: string) => {
+    console.log(`[bot] ${signal} received, shutting down…`);
+    await stopAllTasks();
+    healthServer?.close();
+    await bot.stop();
+    process.exit(0);
+  };
+  process.once("SIGTERM", () => void shutdown("SIGTERM"));
+  process.once("SIGINT", () => void shutdown("SIGINT"));
 
   bot.start({
     // poll_answer is how the bot learns who voted for what (see pollAnswer.ts).

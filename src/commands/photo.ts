@@ -11,7 +11,7 @@ import { collectReplyItems, placeItemKey } from "../utils/replyItems.js";
 import { mediaGroupCache } from "../services/mediaGroupCache.js";
 import { NO_ADMINS_NOTE, notifyAdminsWithItems } from "../services/notifications.js";
 import { getGroupConfig } from "../services/groupConfig.js";
-import { isGroupAdmin } from "../services/adminAuth.js";
+import { isAdminSender } from "../services/adminAuth.js";
 import { buildMessageLink, describeItems, largestPhoto } from "../utils/photoMessage.js";
 import { formatUserName, mentionHtml } from "../utils/userName.js";
 import { escapeHtml } from "../utils/html.js";
@@ -65,7 +65,7 @@ export async function photoCommand(ctx: Context): Promise<void> {
     hasUsername: Boolean(from.username),
   };
   const config = await getGroupConfig();
-  const isAdmin = await isGroupAdmin(ctx.api, config.groupChatId, from.id);
+  const isAdmin = await isAdminSender(ctx, config.groupChatId);
 
   const batchId = await addPhotoBatch(suggestion.id, fresh, author, isAdmin);
 

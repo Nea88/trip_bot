@@ -67,6 +67,8 @@ export interface FakeCtxOptions {
   };
   callbackData?: string;
   username?: string;
+  // Set for admins posting anonymously "as the group".
+  senderChatId?: number;
   // Replaces the incoming message (e.g. an album photo for middleware).
   message?: Record<string, unknown>;
 }
@@ -98,6 +100,7 @@ export function createFakeCtx(api: Api, options: FakeCtxOptions) {
     from: { id: options.userId, is_bot: false, first_name: "Тест", username: options.username ?? `user${options.userId}` },
     message: options.message ?? { message_id: 1, reply_to_message: options.replyTo },
     callbackQuery: options.callbackData ? { data: options.callbackData } : undefined,
+    senderChat: options.senderChatId ? { id: options.senderChatId, type: "supergroup" } : undefined,
     update: { update_id: 1 },
     reply: async (text: string, extra?: unknown) => {
       replies.push(text);

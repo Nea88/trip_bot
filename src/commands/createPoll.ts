@@ -10,6 +10,9 @@ export async function createPollCommand(ctx: Context): Promise<void> {
     case "already_open":
       await ctx.reply("Опрос уже открыт. Сначала закройте его через /close_poll.");
       return;
+    case "in_progress":
+      await ctx.reply("Опрос уже создаётся — подождите пару секунд.");
+      return;
     case "no_suggestions":
       await ctx.reply("Нет активных предложений для опроса.");
       return;

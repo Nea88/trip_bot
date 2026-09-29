@@ -7,7 +7,7 @@ import { setCloseScheduleCommand, setScheduleCommand } from "../commands/setSche
 import { getScheduleCommand } from "../commands/getSchedule.js";
 import { startCommand } from "../commands/start.js";
 import { helpCommand } from "../commands/help.js";
-import { runReminder, stopConfigurableTasks } from "../scheduler/scheduler.js";
+import { runReminder, stopAllTasks } from "../scheduler/scheduler.js";
 import { getAllRegistrations } from "../services/registrations.js";
 import { menuFor } from "../bot/commandSpecs.js";
 import { DEFAULT_REMINDER_TEXT } from "../constants.js";
@@ -28,7 +28,7 @@ beforeEach(async () => {
   setClock(() => NOW);
 });
 // Schedule commands start cron timers; stop them so the test process exits.
-after(stopConfigurableTasks);
+after(stopAllTasks);
 
 async function run(handler: (ctx: never) => Promise<void>, match: string, userId = ADMIN_ID, chatId?: number) {
   const { api, callsTo } = createFakeApi();
