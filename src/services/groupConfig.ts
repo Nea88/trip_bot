@@ -26,6 +26,17 @@ async function updateConfig(fields: Record<string, unknown>): Promise<void> {
   cached = null;
 }
 
+// Per-schedule timezones from before 1.17.0; everything uses DEFAULT_TIMEZONE now.
+const LEGACY_FIELDS = ["timezone", "closeTimezone", "reminderTimezone"];
+
+// One-time cleanup of old config docs; a no-op once the fields are gone.
+async function dropLegacyFields(data: Record<string, unknown>): Promise<void> {
+  const present = LEGACY_FIELDS.filter((field) => field in data);
+  if (present.length === 0) return;
+  await configDoc.update(Object.fromEntries(present.map((field) => [field, FieldValue.delete()])));
+  for (const field of present) delete data[field];
+}
+
 async function loadGroupConfig(): Promise<GroupConfig> {
   const snap = await configDoc.get();
   if (!snap.exists) {
@@ -33,9 +44,7 @@ async function loadGroupConfig(): Promise<GroupConfig> {
       groupChatId: env.groupChatId,
       scheduleDay: null,
       scheduleTime: null,
-      timezone: null,
       reminderTime: null,
-      reminderTimezone: null,
       reminderText: null,
       lastReminderSentDate: null,
       updatedAt: FieldValue.serverTimestamp() as unknown as GroupConfig["updatedAt"],
@@ -46,6 +55,7 @@ async function loadGroupConfig(): Promise<GroupConfig> {
   }
 
   const data = snap.data() as GroupConfig;
+  await dropLegacyFields(data as unknown as Record<string, unknown>);
   // GROUP_CHAT_ID is deployment config (env var / addon option), not
   // user-editable data — it must always win over whatever was seeded into
   // Firestore on some earlier run (e.g. a stale/wrong value, or a group that

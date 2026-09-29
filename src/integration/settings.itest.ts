@@ -108,3 +108,17 @@ test("/help shows admin commands only to admins", async () => {
   assert.match(forAdmin, /\/close_poll/);
   assert.match(forAdmin, /\/backup/);
 });
+
+test("legacy per-schedule timezones are dropped from the config doc on load", async () => {
+  const { db } = await import("../firebase/firestore.js");
+  const { getGroupConfig, resetGroupConfigCache } = await import("../services/groupConfig.js");
+  const ref = db.collection("config").doc("main");
+  await ref.set({ groupChatId: GROUP_CHAT_ID, scheduleDay: 1, scheduleTime: "10:00", timezone: "UTC", reminderTimezone: "UTC", closeTimezone: "UTC" });
+  resetGroupConfigCache();
+
+  const config = await getGroupConfig();
+  assert.equal(config.scheduleTime, "10:00");
+  const stored = (await ref.get()).data()!;
+  assert.deepEqual(["timezone", "reminderTimezone", "closeTimezone"].filter((f) => f in stored), []);
+  assert.ok(!("timezone" in config));
+});

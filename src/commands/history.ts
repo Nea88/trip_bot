@@ -85,8 +85,8 @@ export async function historyCommand(ctx: Context): Promise<void> {
   if (topLosers.length > 0) {
     lines.push("", "Чаще всего проигрывали:");
     topLosers.forEach(({ suggestion, losses, appearances }, i) => {
-      const polls = pluralRu(appearances, ["опроса", "опросов", "опросов"]);
-      lines.push(`${i + 1}. ${formatPlace(suggestion)} — ${losses} из ${appearances} ${polls}`);
+      const pollsWord = pluralRu(appearances, ["опроса", "опросов", "опросов"]);
+      lines.push(`${i + 1}. ${formatPlace(suggestion)} — ${losses} из ${appearances} ${pollsWord}`);
     });
   }
 

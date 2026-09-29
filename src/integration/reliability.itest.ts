@@ -9,13 +9,9 @@ import { createPollIfPossible } from "../services/pollCreation.js";
 import { registerForNotifications } from "../services/registrations.js";
 import { addSuggestion, approveSuggestion, getBySeq } from "../services/suggestions.js";
 import { listAllPolls } from "../services/polls.js";
-import {
-  scheduleBackups,
-  scheduleMeetReminders,
-  scheduleTripMemories,
-  scheduleYearSummary,
-  stopAllTasks,
-} from "../scheduler/scheduler.js";
+import { scheduleFixedJobs, stopAllTasks } from "../scheduler/scheduler.js";
+import { FIXED_JOBS } from "../scheduler/fixedJobs.js";
+import { validate } from "node-cron";
 import {
   ADMIN_DM,
   ADMIN_ID,
@@ -51,8 +47,8 @@ test("simultaneous poll creation (schedule + catch-up + /create_poll) sends one 
   assert.equal(callsTo("sendPoll").length, 1);
   assert.equal((await listAllPolls()).length, 1);
   assert.equal(results.filter((r) => r.kind === "created").length, 1);
-  for (const r of results.filter((r) => r.kind !== "created")) {
-    assert.ok(r.kind === "in_progress" || r.kind === "already_open", r.kind);
+  for (const other of results.filter((res) => res.kind !== "created")) {
+    assert.ok(other.kind === "in_progress" || other.kind === "already_open", other.kind);
   }
 
   // The lock was released: a later call sees the open poll, not "in progress".
@@ -133,11 +129,11 @@ test("migration notices from other chats are ignored", async () => {
   assert.equal(calls.length, 0);
 });
 
+test("fixed jobs have valid cron expressions", () => {
+  for (const job of FIXED_JOBS) assert.ok(validate(job.cron), `${job.name}: ${job.cron}`);
+});
+
 test("stopAllTasks stops the fixed-time jobs too (this file would hang otherwise)", async () => {
-  const { api } = createFakeApi();
-  scheduleTripMemories(api);
-  scheduleMeetReminders(api);
-  scheduleBackups(api);
-  scheduleYearSummary(api);
+  scheduleFixedJobs(createFakeApi().api);
   await stopAllTasks();
 });

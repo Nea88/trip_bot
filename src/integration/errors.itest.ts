@@ -2,7 +2,7 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { BotError } from "grammy";
 import { handleBotError } from "../bot/bot.js";
-import { runSafely } from "../scheduler/scheduler.js";
+import { runSafely } from "../scheduler/runSafely.js";
 import { registerForNotifications } from "../services/registrations.js";
 import { ADMIN_DM, ADMIN_ID, USER_ID, clearFirestore, createFakeApi, createFakeCtx } from "./harness.js";
 

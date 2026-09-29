@@ -49,7 +49,7 @@ export function topRiders(trips: Trip[], votes: VoteRecord[]): Rider[] {
     }
   }
   return [...riders.values()]
-    .map(({ userId, username, hasUsername, trips }) => ({ userId, username, hasUsername, trips }))
+    .map((r) => ({ userId: r.userId, username: r.username, hasUsername: r.hasUsername, trips: r.trips }))
     .sort((a, b) => b.trips - a.trips);
 }
 

@@ -112,19 +112,13 @@ export interface GroupConfig {
   groupChatId: number;
   scheduleDay: number | null;
   scheduleTime: string | null;
-  // Legacy: schedules now always use DEFAULT_TIMEZONE; kept for old docs.
-  timezone: string | null;
   // When /set_schedule was last run; missing on configs from before it existed.
   scheduleSetAt?: Timestamp | null;
   // Weekly auto-close of the open poll (/set_close_schedule); missing = off.
   closeScheduleDay?: number | null;
   closeScheduleTime?: string | null;
-  // Legacy, unused: see `timezone`.
-  closeTimezone?: string | null;
   closeScheduleSetAt?: Timestamp | null;
   reminderTime: string | null;
-  // Legacy, unused: see `timezone`.
-  reminderTimezone: string | null;
   // null means "use DEFAULT_REMINDER_TEXT".
   reminderText: string | null;
   // ISO date (YYYY-MM-DD, in DEFAULT_TIMEZONE) of the last sent reminder.

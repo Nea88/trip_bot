@@ -1,12 +1,33 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "import", "node"],
+  "plugins": [
+    "typescript",
+    "import",
+    "node"
+  ],
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
   },
   "rules": {
-    "import/no-unassigned-import": ["warn", { "allow": ["dotenv/config"] }]
+    "import/no-unassigned-import": [
+      "warn",
+      {
+        "allow": [
+          "dotenv/config"
+        ]
+      }
+    ],
+    "no-underscore-dangle": [
+      "warn",
+      {
+        "allow": [
+          "__timestamp"
+        ]
+      }
+    ]
   },
-  "ignorePatterns": ["dist"]
+  "ignorePatterns": [
+    "dist"
+  ]
 }

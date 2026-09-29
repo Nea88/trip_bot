@@ -6,72 +6,30 @@ import { getGroupConfig, markReminderSent } from "../services/groupConfig.js";
 import { createPollIfPossible } from "../services/pollCreation.js";
 import { getLatestPollCreatedAt, getOpenPoll } from "../services/polls.js";
 import { CLOSE_OUTCOME_TEXT, closeOpenPoll } from "../services/pollClosing.js";
-import { notifyAdmins } from "../services/notifications.js";
 import { DEFAULT_REMINDER_TEXT } from "../constants.js";
 import { lastScheduledOccurrence, shouldCloseMissedPoll, shouldCreateMissedPoll } from "./missedPoll.js";
 import { backupDue, yearSummaryDue } from "./catchUp.js";
-import { sendTripMemories } from "../services/memories.js";
 import { runBackup } from "../services/backup.js";
 import { postYearSummary } from "../services/yearSummary.js";
-import { postStartDayReminder, remindNonVoters } from "../services/weekendNudges.js";
 import { env } from "../config/env.js";
-
-// Daily "on this day" trip memories post, in DEFAULT_TIMEZONE.
-const MEMORIES_CRON = "0 12 * * *";
-
-// The meeting point and start time must be set by Friday 20:00 (DEFAULT_TIMEZONE):
-// admins get a heads-up two hours before, and a nudge at the deadline.
-const MEET_REMINDER_CRON = "0 18 * * 5";
-const MEET_DEADLINE_CRON = "0 20 * * 5";
-const MEET_EXAMPLE = "/meet 09:00 АЗС на выезде из города";
-
-// Friday noon: nudge regulars who haven't voted, before the start is set by 20:00.
-const NON_VOTERS_CRON = "0 12 * * 5";
-// Saturday morning: today's start, weather and map pin.
-const START_DAY_CRON = "0 7 * * 6";
-
-// Weekly backup: Sunday night, when nothing else is going on.
-const BACKUP_CRON = "0 3 * * 0";
-
-// Year in review on December 31 at noon.
-const YEAR_SUMMARY_CRON = "0 12 31 12 *";
+import { runSafely } from "./runSafely.js";
+import { FIXED_JOBS } from "./fixedJobs.js";
 
 let currentPollTask: ScheduledTask | null = null;
 let currentReminderTask: ScheduledTask | null = null;
 let currentCloseTask: ScheduledTask | null = null;
-// Fixed-time jobs (memories, meet reminders, backups, year summary).
+// Fixed-time jobs from FIXED_JOBS (fixedJobs.ts).
 const fixedTasks: ScheduledTask[] = [];
 
-// Reason shown to admins: the message only — never the error object, which
-// may carry request details.
-function failureReason(err: unknown): string {
-  const message = err instanceof Error ? err.message : String(err);
-  return message.length > 300 ? `${message.slice(0, 300)}…` : message;
-}
-
-/**
- * Runs a background job (cron tick or startup catch-up). A rejected promise
- * from a cron tick would crash the process, so errors are logged instead —
- * and admins are told in DM, since a failed job otherwise goes unnoticed
- * (e.g. the weekly poll simply never appears).
- */
-export async function runSafely(api: Api, name: string, job: () => Promise<void>): Promise<void> {
-  try {
-    await job();
-  } catch (err) {
-    console.error(`[scheduler] ${name} failed:`, err);
-    try {
-      const config = await getGroupConfig();
-      await notifyAdmins(
-        api,
-        config.groupChatId,
-        `⚠️ Не получилось: ${name}. ${failureReason(err)}\nПодробности — в логах бота.`,
-      );
-    } catch (notifyErr) {
-      console.error("[scheduler] Failed to tell admins about the failure:", notifyErr);
-    }
+export function scheduleFixedJobs(api: Api): void {
+  for (const job of FIXED_JOBS) {
+    fixedTasks.push(
+      schedule(job.cron, () => runSafely(api, job.name, () => job.run(api)), { timezone: env.defaultTimezone }),
+    );
   }
 }
+
+
 
 async function runScheduledPollCreation(api: Api): Promise<void> {
   const config = await getGroupConfig();
@@ -173,12 +131,6 @@ export async function rescheduleReminderFromConfig(api: Api): Promise<void> {
   });
 }
 
-// Started once at startup; unlike the poll and reminder, not configurable.
-export function scheduleTripMemories(api: Api): void {
-  fixedTasks.push(schedule(MEMORIES_CRON, () => runSafely(api, "пост «В этот день»", () => sendTripMemories(api)), {
-    timezone: env.defaultTimezone,
-  }));
-}
 
 async function runScheduledPollClose(api: Api): Promise<void> {
   const config = await getGroupConfig();
@@ -235,32 +187,8 @@ export async function closeMissedScheduledPoll(api: Api): Promise<void> {
   await runScheduledPollClose(api);
 }
 
-/**
- * Friday check that an admin has set where and when Saturday's ride starts
- * (/meet). Only while a poll is open — that's the trip being planned.
- */
-export async function remindAboutMeet(api: Api, deadlinePassed: boolean): Promise<void> {
-  const config = await getGroupConfig();
-  const openPoll = await getOpenPoll(config.groupChatId);
-  if (!openPoll || openPoll.meetTime) return;
 
-  const text = deadlinePassed
-    ? `Уже 20:00 пятницы, а точка и время старта на завтра не указаны. Укажите: ${MEET_EXAMPLE}`
-    : `До 20:00 нужно указать точку и время старта субботней поездки: ${MEET_EXAMPLE}`;
-  await notifyAdmins(api, config.groupChatId, text);
-}
 
-export function scheduleMeetReminders(api: Api): void {
-  const options = { timezone: env.defaultTimezone };
-  fixedTasks.push(schedule(MEET_REMINDER_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, false)), options));
-  fixedTasks.push(schedule(MEET_DEADLINE_CRON, () => runSafely(api, "напоминание про точку старта", () => remindAboutMeet(api, true)), options));
-}
-
-export function scheduleBackups(api: Api): void {
-  fixedTasks.push(schedule(BACKUP_CRON, () => runSafely(api, "резервная копия базы", () => runBackup(api)), {
-    timezone: env.defaultTimezone,
-  }));
-}
 
 // Stops every cron job — on shutdown, and in tests, which would otherwise
 // never exit with live cron timers.
@@ -274,11 +202,6 @@ export async function stopAllTasks(): Promise<void> {
   fixedTasks.length = 0;
 }
 
-export function scheduleYearSummary(api: Api): void {
-  fixedTasks.push(schedule(YEAR_SUMMARY_CRON, () => runSafely(api, "итоги года", () => postYearSummary(api)), {
-    timezone: env.defaultTimezone,
-  }));
-}
 
 // Startup catch-up: the Dec 31 post, if the bot was down at that moment.
 export async function catchUpYearSummary(api: Api): Promise<void> {
@@ -298,8 +221,3 @@ export async function catchUpBackup(api: Api): Promise<void> {
   await runBackup(api);
 }
 
-export function scheduleWeekendNudges(api: Api): void {
-  const options = { timezone: env.defaultTimezone };
-  fixedTasks.push(schedule(NON_VOTERS_CRON, () => runSafely(api, "напоминание проголосовать", () => remindNonVoters(api)), options));
-  fixedTasks.push(schedule(START_DAY_CRON, () => runSafely(api, "утреннее напоминание о старте", () => postStartDayReminder(api)), options));
-}

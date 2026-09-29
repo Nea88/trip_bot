@@ -9,6 +9,9 @@ import { getGroupConfig } from "./groupConfig.js";
 import { getOpenPoll } from "./polls.js";
 import { listVotes } from "./pollVotes.js";
 import { startWeatherLine } from "./weather.js";
+import { notifyAdmins } from "./notifications.js";
+
+const MEET_EXAMPLE = "/meet 09:00 АЗС на выезде из города";
 
 /**
  * Saturday morning: remind the group of today's start (set with /meet),
@@ -54,3 +57,18 @@ export async function remindNonVoters(api: Api): Promise<void> {
   );
 }
 
+
+/**
+ * Friday check that an admin has set where and when Saturday's ride starts
+ * (/meet). Only while a poll is open — that's the trip being planned.
+ */
+export async function remindAboutMeet(api: Api, deadlinePassed: boolean): Promise<void> {
+  const config = await getGroupConfig();
+  const openPoll = await getOpenPoll(config.groupChatId);
+  if (!openPoll || openPoll.meetTime) return;
+
+  const text = deadlinePassed
+    ? `Уже 20:00 пятницы, а точка и время старта на завтра не указаны. Укажите: ${MEET_EXAMPLE}`
+    : `До 20:00 нужно указать точку и время старта субботней поездки: ${MEET_EXAMPLE}`;
+  await notifyAdmins(api, config.groupChatId, text);
+}
