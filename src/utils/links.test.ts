@@ -29,7 +29,7 @@ test("formatLinks lists links as clickable descriptions, escaped", () => {
     "🔗 Полезные ссылки группы:",
     '#3 <a href="https://a.com/?x=1&amp;y=2">Карта &lt;новая&gt;</a>',
     "",
-    "Предложить свою: /addlink <ссылка> <описание>",
+    "Предложить свою: /addlink &lt;ссылка&gt; &lt;описание&gt;",
   ]);
   assert.equal(formatLinks([])[0], "Полезных ссылок пока нет.");
 });

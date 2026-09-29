@@ -51,7 +51,7 @@ export interface ListedLink {
 /** The /links message (HTML): numbered descriptions that open the links. */
 export function formatLinks(links: ListedLink[]): string[] {
   const intro = "🔗 Полезные ссылки группы:";
-  const outro = "Предложить свою: /addlink <ссылка> <описание>";
+  const outro = `Предложить свою: ${escapeHtml("/addlink <ссылка> <описание>")}`;
   if (links.length === 0) return ["Полезных ссылок пока нет.", outro];
   return [
     intro,

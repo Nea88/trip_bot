@@ -6,7 +6,7 @@ import { COMMANDS, type CommandSpec } from "../bot/commandSpecs.js";
 import { addSuggestion } from "../services/suggestions.js";
 import { createPoll } from "../services/polls.js";
 import { listVotes } from "../services/pollVotes.js";
-import { ADMIN_DM, ADMIN_ID, GROUP_CHAT_ID, USER_ID, clearFirestore } from "./harness.js";
+import { ADMIN_DM, ADMIN_ID, GROUP_CHAT_ID, USER_ID, assertTelegramHtml, clearFirestore } from "./harness.js";
 
 /**
  * Updates go through the real bot (createBot): command registration, the
@@ -30,6 +30,7 @@ function makeBot() {
   let messageId = 5000;
   bot.api.config.use(async (_prev, method, payload) => {
     const p = payload as Record<string, unknown>;
+    if (p.parse_mode === "HTML") assertTelegramHtml(String(p.text));
     sent.push({ method, payload: p });
     const result =
       method === "getChatMember"

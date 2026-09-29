@@ -14,6 +14,27 @@ setWeatherFetcher(async () => {
   throw new Error("no network in tests");
 });
 
+// Tags Telegram accepts with parse_mode "HTML"; anything else starting with
+// "<" (e.g. "<ссылка>") makes it reject the whole message.
+const TELEGRAM_HTML_TAGS = new Set([
+  "a", "b", "strong", "i", "em", "u", "ins", "s", "strike", "del",
+  "span", "tg-spoiler", "tg-emoji", "code", "pre", "blockquote",
+]);
+
+/** Throws like Telegram does on HTML it can't parse. */
+export function assertTelegramHtml(text: string): void {
+  for (let i = text.indexOf("<"); i !== -1; i = text.indexOf("<", i + 1)) {
+    const tag = /^<\/?([a-zA-Z-]+)(?:\s[^<>]*)?>/.exec(text.slice(i));
+    if (!tag || !TELEGRAM_HTML_TAGS.has(tag[1].toLowerCase())) {
+      throw new Error(`Bad Request: can't parse entities: Unsupported start tag at offset ${i} in: ${text}`);
+    }
+  }
+}
+
+function checkHtml(text: unknown, extra: unknown): void {
+  if ((extra as { parse_mode?: string } | undefined)?.parse_mode === "HTML") assertTelegramHtml(String(text));
+}
+
 export const GROUP_CHAT_ID = env.groupChatId;
 export const ADMIN_ID = 1;
 export const ADMIN_DM = 101;
@@ -50,6 +71,7 @@ export function createFakeApi(options: { voteCounts?: number[]; unreachableChats
           if (method === "sendMessage" && options.unreachableChats?.includes(args[0] as number)) {
             throw new Error("Forbidden: bot can't initiate conversation with a user");
           }
+          if (method === "sendMessage") checkHtml(args[1], args[2]);
           const handler = handlers[method];
           return handler ? handler(...args) : { message_id: nextMessageId++ };
         },
@@ -109,6 +131,7 @@ export function createFakeCtx(api: Api, options: FakeCtxOptions) {
     update: { update_id: 1 },
     me: { id: BOT_ID, is_bot: true, first_name: "Bot", username: "test_bot" },
     reply: async (text: string, extra?: unknown) => {
+      checkHtml(text, extra);
       replies.push(text);
       replyExtras.push(extra);
       return { message_id: 900 + replies.length, chat: { id: chatId } };
