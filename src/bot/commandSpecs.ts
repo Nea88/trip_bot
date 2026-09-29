@@ -49,7 +49,7 @@ export const COMMANDS = [
   { command: "create_poll", menu: "Создать опрос сейчас", audience: "admin", where: "any",
     help: "/create_poll — создать опрос прямо сейчас" },
   { command: "meet", menu: "Точка и время старта субботней поездки", audience: "admin", where: "any",
-    help: "/meet <ЧЧ:ММ> <точка> — точка и время старта субботней поездки (до 20:00 пятницы), публикуется в группе" },
+    help: "/meet <ЧЧ:ММ> <точка> — точка и время старта субботней поездки (до 20:00 пятницы), публикуется в группе. Ответом на геолокацию — ещё точка на карте и прогноз погоды" },
   { command: "close_poll", menu: "Закрыть опрос и подтвердить, куда съездили", audience: "admin", where: "group",
     help: "/close_poll — закрыть текущий опрос и подтвердить, куда съездили" },
   { command: "cancel_poll", menu: "Закрыть опрос без подсчёта результатов", audience: "admin", where: "group",

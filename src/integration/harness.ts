@@ -3,11 +3,16 @@ import { DateTime } from "luxon";
 import { env } from "../config/env.js";
 import { setClock } from "../utils/clock.js";
 import { resetGroupConfigCache } from "../services/groupConfig.js";
+import { setWeatherFetcher } from "../services/weather.js";
 
 // Every integration test runs at a fixed "now": Sunday 27.09.2026 12:00 in
 // the group's timezone — the day polls auto-close and trips get confirmed.
 export const NOW = DateTime.fromISO("2026-09-27T12:00", { zone: "Europe/Moscow" });
 setClock(() => NOW);
+// No network in tests: the forecast is "unavailable" unless a test stubs it.
+setWeatherFetcher(async () => {
+  throw new Error("no network in tests");
+});
 
 export const GROUP_CHAT_ID = env.groupChatId;
 export const ADMIN_ID = 1;
@@ -53,7 +58,13 @@ export interface FakeCtxOptions {
   userId: number;
   chatId?: number;
   match?: string;
-  replyTo?: { message_id: number; media_group_id?: string; photo?: unknown[] };
+  replyTo?: {
+    message_id: number;
+    media_group_id?: string;
+    photo?: unknown[];
+    location?: { latitude: number; longitude: number };
+    venue?: { location: { latitude: number; longitude: number }; title: string; address: string };
+  };
   callbackData?: string;
   username?: string;
   // Replaces the incoming message (e.g. an album photo for middleware).

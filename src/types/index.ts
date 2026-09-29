@@ -86,6 +86,9 @@ export interface PollDoc {
   // admin with /meet while the poll is open.
   meetTime?: string | null;
   meetPlace?: string | null;
+  // Coordinates when /meet replied to a location; used for the map pin and forecast.
+  meetLatitude?: number | null;
+  meetLongitude?: number | null;
 }
 
 export interface PollDocWithId extends PollDoc {

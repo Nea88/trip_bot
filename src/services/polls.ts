@@ -113,8 +113,18 @@ export async function resolvePendingResult(
   });
 }
 
-export async function setMeet(pollId: string, meetTime: string, meetPlace: string): Promise<void> {
-  await polls.doc(pollId).update({ meetTime, meetPlace });
+export async function setMeet(
+  pollId: string,
+  meetTime: string,
+  meetPlace: string,
+  location: { latitude: number; longitude: number } | null,
+): Promise<void> {
+  await polls.doc(pollId).update({
+    meetTime,
+    meetPlace,
+    meetLatitude: location?.latitude ?? null,
+    meetLongitude: location?.longitude ?? null,
+  });
 }
 
 export async function getLatestPollCreatedAt(): Promise<Date | null> {
