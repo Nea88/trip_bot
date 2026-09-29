@@ -4,7 +4,7 @@ import {
   approveSuggestion,
   findByNormalizedText,
 } from "../services/suggestions.js";
-import { notifyAdmins } from "../services/notifications.js";
+import { NO_ADMINS_NOTE, notifyAdmins } from "../services/notifications.js";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { isGroupAdmin } from "../services/adminAuth.js";
 import { normalizeSuggestionText, validateSuggestionText } from "../utils/suggestionText.js";
@@ -54,16 +54,15 @@ export async function suggestCommand(ctx: Context): Promise<void> {
     return;
   }
 
-  await ctx.reply("Ваш вариант отправлен на рассмотрение админу.");
-
   const keyboard = new InlineKeyboard()
     .text("Одобрить", buildReviewCallbackData(suggestion.id, "approve"))
     .text("Отклонить", buildReviewCallbackData(suggestion.id, "reject"));
 
-  await notifyAdmins(
+  const reached = await notifyAdmins(
     ctx.api,
     config.groupChatId,
     `Новое предложение маршрута от ${formatUserName(username, hasUsername)}:\n#${suggestion.seq}: ${text}`,
     keyboard,
   );
+  await ctx.reply(`Ваш вариант отправлен на рассмотрение админу.${reached === 0 ? NO_ADMINS_NOTE : ""}`);
 }

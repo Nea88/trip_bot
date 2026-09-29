@@ -3,24 +3,34 @@ import { isGroupAdmin } from "./adminAuth.js";
 import { getAllRegistrations } from "./registrations.js";
 import { sendPlaceItems, type PlaceItemRef } from "../utils/photoMessage.js";
 
-// Runs `send` for the DM of every registered user who is still a group admin.
+// Added to replies when a request for review reached no admin at all.
+export const NO_ADMINS_NOTE =
+  "\n\n⚠️ Ни один админ сейчас не подписан на уведомления, так что запрос никто не увидит. Попросите админа написать боту /start в личных сообщениях — после этого запрос будет в /pending.";
+
+/**
+ * Runs `send` for the DM of every registered user who is still a group
+ * admin. Returns how many admins it actually reached.
+ */
 export async function forEachAdminDm(
   api: Api,
   groupChatId: number,
   send: (dmChatId: number) => Promise<void>,
-): Promise<void> {
+): Promise<number> {
   const registrations = await getAllRegistrations();
-  await Promise.all(
+  const delivered = await Promise.all(
     registrations.map(async ({ userId, registration }) => {
       const admin = await isGroupAdmin(api, groupChatId, userId);
-      if (!admin) return;
+      if (!admin) return false;
       try {
         await send(registration.dmChatId);
+        return true;
       } catch {
         // Registered user may have blocked the bot; skip silently.
+        return false;
       }
     }),
   );
+  return delivered.filter(Boolean).length;
 }
 
 export async function notifyAdmins(
@@ -28,8 +38,8 @@ export async function notifyAdmins(
   groupChatId: number,
   text: string,
   keyboard?: InlineKeyboard,
-): Promise<void> {
-  await forEachAdminDm(api, groupChatId, async (dmChatId) => {
+): Promise<number> {
+  return forEachAdminDm(api, groupChatId, async (dmChatId) => {
     await api.sendMessage(dmChatId, text, { reply_markup: keyboard });
   });
 }
@@ -42,8 +52,8 @@ export async function notifyAdminsWithItems(
   items: PlaceItemRef[],
   text: string,
   keyboard: InlineKeyboard,
-): Promise<void> {
-  await forEachAdminDm(api, groupChatId, async (dmChatId) => {
+): Promise<number> {
+  return forEachAdminDm(api, groupChatId, async (dmChatId) => {
     await sendPlaceItems(api, dmChatId, items);
     await api.sendMessage(dmChatId, text, { reply_markup: keyboard });
   });

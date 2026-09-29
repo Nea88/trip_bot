@@ -9,13 +9,18 @@ import {
 } from "../services/placePhotos.js";
 import { collectReplyItems, placeItemKey } from "../utils/replyItems.js";
 import { mediaGroupCache } from "../services/mediaGroupCache.js";
-import { notifyAdminsWithItems } from "../services/notifications.js";
+import { NO_ADMINS_NOTE, notifyAdminsWithItems } from "../services/notifications.js";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { isGroupAdmin } from "../services/adminAuth.js";
 import { buildMessageLink, describeItems, largestPhoto } from "../utils/photoMessage.js";
-import { formatUserName } from "../utils/userName.js";
+import { formatUserName, mentionHtml } from "../utils/userName.js";
+import { escapeHtml } from "../utils/html.js";
 
 const CALLBACK_PREFIX = "ph";
+
+export function photoReviewCallbackData(batchId: string, action: "approve" | "reject"): string {
+  return `${CALLBACK_PREFIX}:${batchId}:${action}`;
+}
 const USAGE =
   "Ответьте на сообщение (фото, видео, текст — что угодно) командой /photo <номер места>, например: /photo 12. Номера мест — в /list и /excluded.";
 
@@ -69,17 +74,18 @@ export async function photoCommand(ctx: Context): Promise<void> {
     return;
   }
 
-  await ctx.reply(`Отправлено на модерацию: ${what} к ${place}${skippedNote}.${albumNote}`);
-
   const keyboard = new InlineKeyboard()
-    .text("Одобрить", `${CALLBACK_PREFIX}:${batchId}:approve`)
-    .text("Отклонить", `${CALLBACK_PREFIX}:${batchId}:reject`);
-  await notifyAdminsWithItems(
+    .text("Одобрить", photoReviewCallbackData(batchId, "approve"))
+    .text("Отклонить", photoReviewCallbackData(batchId, "reject"));
+  const reached = await notifyAdminsWithItems(
     ctx.api,
     config.groupChatId,
     fresh,
     `${formatUserName(author.username, author.hasUsername)} хочет добавить ${what} к ${place}\nОригинал: ${buildMessageLink(fresh[0].sourceChatId, fresh[0].sourceMessageId)}`,
     keyboard,
+  );
+  await ctx.reply(
+    `Отправлено на модерацию: ${what} к ${place}${skippedNote}.${albumNote}${reached === 0 ? NO_ADMINS_NOTE : ""}`,
   );
 }
 
@@ -101,11 +107,18 @@ export async function photoReviewCallback(ctx: CallbackQueryContext<Context>): P
   await ctx.editMessageText(`${approve ? "Одобрено" : "Отклонено"}: ${what} к ${place}`);
   await ctx.answerCallbackQuery();
 
+  const config = await getGroupConfig();
   if (approve && suggestion) {
-    const config = await getGroupConfig();
     await ctx.api.sendMessage(
       config.groupChatId,
       `Добавлено ${what} к ${place}. Смотреть: /place ${suggestion.seq}`,
+    );
+  } else if (!approve) {
+    const { userId, username } = resolved.author;
+    await ctx.api.sendMessage(
+      config.groupChatId,
+      `${mentionHtml(userId, username)}, ${what} к ${escapeHtml(place)} админ не добавил в архив.`,
+      { parse_mode: "HTML" },
     );
   }
 }

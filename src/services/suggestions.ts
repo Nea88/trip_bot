@@ -59,6 +59,13 @@ export async function listActiveSuggestions(): Promise<SuggestionWithId[]> {
   return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Suggestion) }));
 }
 
+export async function listPendingSuggestions(): Promise<SuggestionWithId[]> {
+  const snap = await suggestions.where("status", "==", "pending").get();
+  return snap.docs
+    .map((doc) => ({ id: doc.id, ...(doc.data() as Suggestion) }))
+    .sort((a, b) => a.seq - b.seq);
+}
+
 export async function listAllSuggestions(): Promise<SuggestionWithId[]> {
   const snap = await suggestions.get();
   return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Suggestion) }));

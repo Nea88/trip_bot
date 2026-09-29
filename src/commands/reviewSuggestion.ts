@@ -1,6 +1,8 @@
 import type { CallbackQueryContext, Context } from "grammy";
 import { getById, approveSuggestion, rejectSuggestion } from "../services/suggestions.js";
 import { getGroupConfig } from "../services/groupConfig.js";
+import { mentionHtml } from "../utils/userName.js";
+import { escapeHtml } from "../utils/html.js";
 
 const CALLBACK_PREFIX = "rev";
 
@@ -30,6 +32,12 @@ export async function reviewCallback(ctx: CallbackQueryContext<Context>): Promis
     await rejectSuggestion(suggestion.id);
     await ctx.editMessageText(`Отклонено: #${suggestion.seq} "${suggestion.text}"`);
     await ctx.answerCallbackQuery();
+    const config = await getGroupConfig();
+    await ctx.api.sendMessage(
+      config.groupChatId,
+      `${mentionHtml(suggestion.addedByUserId, suggestion.addedByUsername)}, вариант «${escapeHtml(suggestion.text)}» админ не одобрил.`,
+      { parse_mode: "HTML" },
+    );
     return;
   }
 

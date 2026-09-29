@@ -63,6 +63,8 @@ export interface FakeCtxOptions {
 // The subset of grammY's Context the handlers use, with replies captured.
 export function createFakeCtx(api: Api, options: FakeCtxOptions) {
   const replies: string[] = [];
+  // Second argument of each reply (keyboards etc.), aligned with `replies`.
+  const replyExtras: unknown[] = [];
   const edits: string[] = [];
   const callbackAnswers: (string | undefined)[] = [];
   const documents: { document: unknown; caption?: string }[] = [];
@@ -75,8 +77,9 @@ export function createFakeCtx(api: Api, options: FakeCtxOptions) {
     message: options.message ?? { message_id: 1, reply_to_message: options.replyTo },
     callbackQuery: options.callbackData ? { data: options.callbackData } : undefined,
     update: { update_id: 1 },
-    reply: async (text: string) => {
+    reply: async (text: string, extra?: unknown) => {
       replies.push(text);
+      replyExtras.push(extra);
       return { message_id: 1 };
     },
     editMessageText: async (text: string) => {
@@ -95,6 +98,7 @@ export function createFakeCtx(api: Api, options: FakeCtxOptions) {
   return {
     ctx: ctx as unknown as Context,
     replies,
+    replyExtras,
     edits,
     callbackAnswers,
     documents,

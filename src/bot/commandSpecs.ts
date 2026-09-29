@@ -32,6 +32,8 @@ export const COMMANDS = [
   { command: "help", menu: "Список команд", audience: "all", where: "any",
     help: "/help — этот список" },
 
+  { command: "pending", menu: "Что ждёт модерации", audience: "admin", where: "any",
+    help: "/pending — предложения и фото, которые ждут решения, с кнопками одобрения" },
   { command: "unphoto", menu: "Убрать фото (ответом) из архива", audience: "admin", where: "group",
     help: "/unphoto — ответом на фото или исходное сообщение убрать его из архива места" },
   { command: "edit", menu: "Изменить текст варианта", audience: "admin", where: "any",

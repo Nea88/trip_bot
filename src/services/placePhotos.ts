@@ -74,7 +74,11 @@ export async function addPhotoBatch(
 export async function resolveBatch(
   batchId: string,
   approve: boolean,
-): Promise<{ suggestionId: string; items: { fileId: string | null }[] } | null> {
+): Promise<{
+  suggestionId: string;
+  items: { fileId: string | null }[];
+  author: { userId: number; username: string };
+} | null> {
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(placePhotos.where("batchId", "==", batchId));
     const pending = snap.docs.filter((doc) => (doc.data() as PlacePhoto).status === "pending");
@@ -93,9 +97,11 @@ export async function resolveBatch(
     if (approve && suggestionSnap.exists) {
       tx.update(suggestionRef, { photoCount: FieldValue.increment(pending.length) });
     }
+    const first = pending[0].data() as PlacePhoto;
     return {
       suggestionId,
       items: pending.map((doc) => ({ fileId: (doc.data() as PlacePhoto).fileId })),
+      author: { userId: first.addedByUserId, username: first.addedByUsername },
     };
   });
 }
@@ -171,4 +177,23 @@ export async function deleteAllForSuggestion(suggestionId: string): Promise<void
     for (const doc of snap.docs.slice(i, i + MAX_BATCH_WRITES)) batch.delete(doc.ref);
     await batch.commit();
   }
+}
+
+export interface PendingBatch {
+  batchId: string;
+  suggestionId: string;
+  items: PlacePhotoWithId[];
+}
+
+// Submissions still waiting for an admin, oldest first (for /pending).
+export async function listPendingBatches(): Promise<PendingBatch[]> {
+  const snap = await placePhotos.where("status", "==", "pending").get();
+  const batches = new Map<string, PendingBatch>();
+  for (const photo of snap.docs.map(withId)) {
+    const batch = batches.get(photo.batchId);
+    if (batch) batch.items.push(photo);
+    else batches.set(photo.batchId, { batchId: photo.batchId, suggestionId: photo.suggestionId, items: [photo] });
+  }
+  const addedAt = (b: PendingBatch) => Math.min(...b.items.map((p) => p.addedAt.toMillis()));
+  return [...batches.values()].sort((a, b) => addedAt(a) - addedAt(b));
 }

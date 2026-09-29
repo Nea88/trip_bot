@@ -32,6 +32,7 @@ import {
 import { placeCommand } from "../commands/place.js";
 import { historyCommand } from "../commands/history.js";
 import { backupCommand } from "../commands/backup.js";
+import { pendingCommand } from "../commands/pending.js";
 import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
 import { COMMANDS, type CommandName } from "./commandSpecs.js";
 
@@ -44,6 +45,7 @@ const HANDLERS: Record<CommandName, (ctx: Context) => Promise<void>> = {
   history: historyCommand,
   start: startCommand,
   help: helpCommand,
+  pending: pendingCommand,
   unphoto: unphotoCommand,
   edit: editCommand,
   delete: deleteCommand,
