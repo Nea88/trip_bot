@@ -18,7 +18,7 @@ test("every command is documented in the README table", () => {
 
 test("menus: members see only their commands, /help is last", () => {
   assert.deepEqual(menuNames("private"), ["links", "addlink", "me", "start", "help"]);
-  assert.deepEqual(menuNames("group"), ["suggest", "list", "photo", "place", "history", "links", "addlink", "year", "me", "help"]);
+  assert.deepEqual(menuNames("group"), ["suggest", "list", "photo", "place", "history", "links", "addlink", "year", "top", "me", "help"]);
   for (const scope of ["private", "group", "groupAdmin"] as const) {
     assert.equal(menuNames(scope).at(-1), "help", scope);
   }

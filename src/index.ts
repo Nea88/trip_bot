@@ -17,10 +17,8 @@ import { getPollsWithUnpostedPendingResult } from "./services/polls.js";
 import { postPendingResultMessage } from "./services/pollClosing.js";
 import { registerBotCommands } from "./bot/commands.js";
 import { getGroupConfig } from "./services/groupConfig.js";
-
-// Long polling holds each getUpdates call open for up to 30s, so a healthy
-// bot completes one well within this window.
-const HEALTHY_POLL_WINDOW_MS = 90_000;
+import { firestoreHealthy } from "./services/health.js";
+import { healthStatus } from "./utils/health.js";
 
 async function main(): Promise<void> {
   const bot = createBot();
@@ -65,11 +63,14 @@ async function main(): Promise<void> {
   let healthServer: http.Server | null = null;
   if (env.port) {
     healthServer = http
-      .createServer((_req, res) => {
-        const healthy =
-          bot.isRunning() && Date.now() - lastSuccessfulPollAt < HEALTHY_POLL_WINDOW_MS;
-        res.writeHead(healthy ? 200 : 503);
-        res.end(healthy ? "ok" : "unhealthy");
+      .createServer(async (_req, res) => {
+        const { code, body } = healthStatus({
+          botRunning: bot.isRunning(),
+          msSinceLastPoll: Date.now() - lastSuccessfulPollAt,
+          firestoreOk: await firestoreHealthy(),
+        });
+        res.writeHead(code);
+        res.end(body);
       })
       .listen(env.port, () => {
         console.log(`[http] Healthcheck server listening on port ${env.port}`);

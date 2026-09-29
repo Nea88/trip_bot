@@ -2,6 +2,7 @@ import { beforeEach, test } from "node:test";
 import assert from "node:assert/strict";
 import { meCommand } from "../commands/me.js";
 import { yearCommand } from "../commands/year.js";
+import { topCommand } from "../commands/top.js";
 import { photoCommand } from "../commands/photo.js";
 import { pollAnswerHandler } from "../commands/pollAnswer.js";
 import { postYearSummary } from "../services/yearSummary.js";
@@ -136,4 +137,25 @@ test("no year-end post when there were no trips", async () => {
   const { api, calls } = createFakeApi();
   await postYearSummary(api);
   assert.equal(calls.length, 0);
+});
+
+test("/top ranks the year's riders, idea authors and archivists", async () => {
+  await seed();
+  const fake = createFakeCtx(createFakeApi().api, { userId: USER_ID });
+  await topCommand(fake.ctx);
+  assert.equal(
+    fake.lastReply(),
+    [
+      "🏆 Рейтинг 2026 года",
+      "",
+      "Поездки:",
+      "1. @user5 — 1 поездка",
+      "",
+      "Идеи (одобренные):",
+      "1. @user2 — 2 идеи",
+      "",
+      "Пополнили архив (фото и сообщения):",
+      "1. @user1 — 1",
+    ].join("\n"),
+  );
 });

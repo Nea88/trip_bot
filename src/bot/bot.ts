@@ -35,6 +35,7 @@ import { backupCommand } from "../commands/backup.js";
 import { pendingCommand } from "../commands/pending.js";
 import { meCommand } from "../commands/me.js";
 import { yearCommand } from "../commands/year.js";
+import { topCommand } from "../commands/top.js";
 import { pollAnswerHandler } from "../commands/pollAnswer.js";
 import { groupMigratedHandler } from "../commands/groupMigration.js";
 import {
@@ -57,6 +58,7 @@ const HANDLERS: Record<CommandName, (ctx: Context) => Promise<void>> = {
   place: placeCommand,
   history: historyCommand,
   year: yearCommand,
+  top: topCommand,
   me: meCommand,
   start: startCommand,
   help: helpCommand,

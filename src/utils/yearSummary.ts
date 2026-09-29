@@ -2,6 +2,7 @@ import { formatUserName } from "./userName.js";
 import { pluralRu } from "./plural.js";
 import { formatIsoDate } from "./tripDate.js";
 import { topRiders, type Trip, type VoteRecord } from "./participation.js";
+import { inYear as isInYear, topBy as topByLimit } from "./leaderboard.js";
 
 export interface YearSummaryInput {
   suggestions: {
@@ -28,25 +29,18 @@ export interface YearSummaryInput {
 }
 
 const TOP = 3;
+
+const topBy = <T>(items: T[], key: (item: T) => number, label: (item: T) => string) =>
+  topByLimit(items, key, label, TOP);
 const MAX_TRIPS_LISTED = 20;
 
-function topBy<T>(items: T[], key: (item: T) => number, label: (item: T) => string) {
-  const counts = new Map<number, { label: string; count: number }>();
-  for (const item of items) {
-    const k = key(item);
-    const entry = counts.get(k) ?? { label: label(item), count: 0 };
-    entry.count++;
-    counts.set(k, entry);
-  }
-  return [...counts.values()].sort((a, b) => b.count - a.count).slice(0, TOP);
-}
 
 /**
  * Year in review: trips, places with the most archive items, top idea
  * authors and top contributors to the archive. Plain text.
  */
 export function formatYearSummary(year: number, input: YearSummaryInput): string {
-  const inYear = (iso: string | null) => iso !== null && iso.startsWith(`${year}-`);
+  const inYear = (iso: string | null) => isInYear(year, iso);
   const byId = new Map(input.suggestions.map((s) => [s.id, s]));
 
   const trips = input.trips

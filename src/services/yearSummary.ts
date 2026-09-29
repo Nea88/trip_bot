@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import type { Timestamp } from "firebase-admin/firestore";
 import { env } from "../config/env.js";
 import { now } from "../utils/clock.js";
-import { formatYearSummary } from "../utils/yearSummary.js";
+import { formatYearSummary, type YearSummaryInput } from "../utils/yearSummary.js";
 import { getGroupConfig, markYearSummaryHandled } from "./groupConfig.js";
 import { listAllSuggestions } from "./suggestions.js";
 import { listAllApproved } from "./placePhotos.js";
@@ -13,19 +13,24 @@ import { listTrips } from "./trips.js";
 const isoDay = (ts: Timestamp | null | undefined) =>
   ts ? DateTime.fromJSDate(ts.toDate()).setZone(env.defaultTimezone).toISODate() : null;
 
-export async function buildYearSummary(year: number): Promise<string> {
+// Everything the year summary and /top count: ideas, trips, votes, archive.
+export async function loadYearData(): Promise<YearSummaryInput> {
   const [suggestions, trips, votes, archive] = await Promise.all([
     listAllSuggestions(),
     listTrips(),
     listVotes(),
     listAllApproved(),
   ]);
-  return formatYearSummary(year, {
+  return {
     suggestions: suggestions.map((s) => ({ ...s, addedOn: isoDay(s.addedAt) })),
     trips,
     votes,
     archive: archive.map((a) => ({ ...a, addedOn: isoDay(a.addedAt) ?? "" })),
-  });
+  };
+}
+
+export async function buildYearSummary(year: number): Promise<string> {
+  return formatYearSummary(year, await loadYearData());
 }
 
 /**
