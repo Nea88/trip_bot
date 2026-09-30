@@ -30,6 +30,19 @@ export async function isGroupAdmin(
 }
 
 /**
+ * Whether the user created the group. Uncached: only backups ask, and they
+ * carry every member's data, so a stale answer is worse than an extra call.
+ */
+export async function isGroupOwner(api: Api, groupChatId: number, userId: number): Promise<boolean> {
+  try {
+    return (await api.getChatMember(groupChatId, userId)).status === "creator";
+  } catch (err) {
+    console.error(`[adminAuth] getChatMember failed for user ${userId}:`, err);
+    return false;
+  }
+}
+
+/**
  * Whether the sender of this update is a group admin. Covers admins posting
  * anonymously "as the group": their messages carry sender_chat = the group
  * and a placeholder bot as `from`.

@@ -1,5 +1,5 @@
 import type { Api, InlineKeyboard } from "grammy";
-import { isGroupAdmin } from "./adminAuth.js";
+import { isGroupAdmin, isGroupOwner } from "./adminAuth.js";
 import { getAllRegistrations } from "./registrations.js";
 import { sendPlaceItems, type PlaceItemRef } from "../utils/photoMessage.js";
 
@@ -31,6 +31,28 @@ export async function forEachAdminDm(
     }),
   );
   return delivered.filter(Boolean).length;
+}
+
+/**
+ * Runs `send` for the group owner's DM, if the owner registered with /start.
+ * Returns whether it got through.
+ */
+export async function sendToOwnerDm(
+  api: Api,
+  groupChatId: number,
+  send: (dmChatId: number) => Promise<void>,
+): Promise<boolean> {
+  for (const { userId, registration } of await getAllRegistrations()) {
+    if (!(await isGroupOwner(api, groupChatId, userId))) continue;
+    try {
+      await send(registration.dmChatId);
+      return true;
+    } catch (err) {
+      console.error("[notifications] Failed to reach the group owner:", err);
+      return false;
+    }
+  }
+  return false;
 }
 
 export async function notifyAdmins(

@@ -5,6 +5,9 @@ import { normalizeSuggestionText } from "../utils/suggestionText.js";
 import { deleteAllForSuggestion } from "./placePhotos.js";
 
 const suggestions = db.collection("suggestions");
+// Queries filter only and sort in memory: where + orderBy needs a composite
+// index in production, which the emulator doesn't require, so tests can't
+// catch a missing one.
 const counterDoc = db.collection("counters").doc("suggestionSeq");
 
 async function nextSeq(): Promise<number> {
@@ -52,11 +55,10 @@ export async function addSuggestion(
 }
 
 export async function listActiveSuggestions(): Promise<SuggestionWithId[]> {
-  const snap = await suggestions
-    .where("status", "==", "active")
-    .orderBy("addedAt", "asc")
-    .get();
-  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Suggestion) }));
+  const snap = await suggestions.where("status", "==", "active").get();
+  return snap.docs
+    .map((doc) => ({ id: doc.id, ...(doc.data() as Suggestion) }))
+    .sort((a, b) => a.addedAt.toMillis() - b.addedAt.toMillis());
 }
 
 export async function listPendingSuggestions(): Promise<SuggestionWithId[]> {
@@ -72,11 +74,10 @@ export async function listAllSuggestions(): Promise<SuggestionWithId[]> {
 }
 
 export async function listExcludedSuggestions(): Promise<SuggestionWithId[]> {
-  const snap = await suggestions
-    .where("status", "==", "excluded")
-    .orderBy("excludedAt", "desc")
-    .get();
-  return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Suggestion) }));
+  const snap = await suggestions.where("status", "==", "excluded").get();
+  return snap.docs
+    .map((doc) => ({ id: doc.id, ...(doc.data() as Suggestion) }))
+    .sort((a, b) => (b.excludedAt?.toMillis() ?? 0) - (a.excludedAt?.toMillis() ?? 0));
 }
 
 export async function getBySeq(seq: number): Promise<SuggestionWithId | null> {

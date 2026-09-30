@@ -1,4 +1,5 @@
 import http from "node:http";
+import { GrammyError } from "grammy";
 import { createBot } from "./bot/bot.js";
 import { env } from "./config/env.js";
 import {
@@ -90,13 +91,25 @@ async function main(): Promise<void> {
   process.once("SIGTERM", () => void shutdown("SIGTERM"));
   process.once("SIGINT", () => void shutdown("SIGINT"));
 
-  bot.start({
-    // poll_answer is how the bot learns who voted for what (see pollAnswer.ts).
-    allowed_updates: ["message", "callback_query", "poll_answer"],
-    onStart: (botInfo) => {
-      console.log(`[bot] Started as @${botInfo.username}`);
-    },
-  });
+  bot
+    .start({
+      // poll_answer is how the bot learns who voted for what (see pollAnswer.ts).
+      allowed_updates: ["message", "callback_query", "poll_answer"],
+      onStart: (botInfo) => {
+        console.log(`[bot] Started as @${botInfo.username}`);
+      },
+    })
+    // grammY gives up polling only on errors retrying can't fix; exit so the
+    // watchdog restarts the add-on, with a log line that says why.
+    .catch((err) => {
+      if (err instanceof GrammyError && err.error_code === 409) {
+        console.error("[bot] Another instance is polling with this token (e.g. npm run dev with the production .env). Stop it.");
+      } else if (err instanceof GrammyError && err.error_code === 401) {
+        console.error("[bot] Telegram rejected the bot token — check bot_token in the add-on options.");
+      }
+      console.error("[bot] Polling stopped:", err instanceof Error ? err.message : err);
+      process.exit(1);
+    });
 }
 
 main().catch((err) => {

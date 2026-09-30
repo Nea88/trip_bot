@@ -64,7 +64,7 @@ export async function placeCommand(ctx: Context): Promise<void> {
     }
     shown.forEach((entry, i) => {
       const date = entry.date.toLocaleDateString("ru-RU");
-      lines.push(`${i + 1}. ${date} — <a href="${entry.link}">${entry.what}</a> от ${escapeHtml(entry.author)}`);
+      lines.push(`${i + 1}. ${date} — <a href="${escapeHtml(entry.link)}">${escapeHtml(entry.what)}</a> от ${escapeHtml(entry.author)}`);
     });
   }
 

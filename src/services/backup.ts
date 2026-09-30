@@ -4,7 +4,7 @@ import { env } from "../config/env.js";
 import { now } from "../utils/clock.js";
 import { formatIsoDate } from "../utils/tripDate.js";
 import { getGroupConfig, markBackupDone } from "./groupConfig.js";
-import { forEachAdminDm } from "./notifications.js";
+import { notifyAdmins, sendToOwnerDm } from "./notifications.js";
 import {
   BACKUP_FORMAT_VERSION,
   backupFileName,
@@ -14,11 +14,15 @@ import {
   type BackupFile,
 } from "./backupFormat.js";
 
+export const OWNER_UNREACHABLE_TEXT =
+  "💾 Еженедельная резервная копия базы не отправлена: её получает только владелец группы, а бот не смог ему написать. Владельцу нужно написать боту /start в личных сообщениях.";
+
 // Weekly backups kept on disk (~2 months).
 const KEEP_ON_DISK = 8;
 // Firestore caps a write batch at 500 operations.
 const MAX_BATCH_WRITES = 500;
 
+// Top-level collections only: the bot keeps no subcollections.
 export async function exportAll(): Promise<BackupFile> {
   const collections: BackupFile["collections"] = {};
   for (const collection of await db.listCollections()) {
@@ -85,7 +89,8 @@ export async function prepareBackup(): Promise<PreparedBackup> {
 
 /**
  * Weekly job: saves the backup to BACKUP_DIR (the add-on's /data, which HA
- * includes in its own backups) and sends it to admins in DM.
+ * includes in its own backups) and sends it to the group owner in DM — it
+ * holds every member's data, so other admins don't get it.
  */
 export async function runBackup(api: Api, dir: string | null = env.backupDir): Promise<void> {
   const prepared = await prepareBackup();
@@ -93,10 +98,13 @@ export async function runBackup(api: Api, dir: string | null = env.backupDir): P
     await saveBackupFile(dir, prepared.isoDate, prepared.json, KEEP_ON_DISK);
   }
   const config = await getGroupConfig();
-  await forEachAdminDm(api, config.groupChatId, async (dmChatId) => {
+  const sent = await sendToOwnerDm(api, config.groupChatId, async (dmChatId) => {
     await api.sendDocument(dmChatId, new InputFile(Buffer.from(prepared.json), prepared.fileName), {
       caption: prepared.caption,
     });
   });
+  if (!sent) {
+    await notifyAdmins(api, config.groupChatId, OWNER_UNREACHABLE_TEXT);
+  }
   await markBackupDone(now().toISO()!);
 }

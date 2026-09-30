@@ -16,3 +16,8 @@ test("each failing part is named", () => {
     body: "telegram polling stalled; firestore unavailable",
   });
 });
+
+test("a handler waiting out 429 retries doesn't count as stalled polling", () => {
+  assert.equal(healthStatus({ botRunning: true, msSinceLastPoll: 200_000, firestoreOk: true }).code, 200);
+  assert.equal(healthStatus({ botRunning: true, msSinceLastPoll: 240_000, firestoreOk: true }).code, 503);
+});

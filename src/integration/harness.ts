@@ -2,6 +2,7 @@ import type { Api, Context } from "grammy";
 import { DateTime } from "luxon";
 import { env } from "../config/env.js";
 import { setClock } from "../utils/clock.js";
+import { assertTelegramHtml } from "../utils/html.js";
 import { resetGroupConfigCache } from "../services/groupConfig.js";
 import { setWeatherFetcher } from "../services/weather.js";
 
@@ -14,23 +15,6 @@ setWeatherFetcher(async () => {
   throw new Error("no network in tests");
 });
 
-// Tags Telegram accepts with parse_mode "HTML"; anything else starting with
-// "<" (e.g. "<ссылка>") makes it reject the whole message.
-const TELEGRAM_HTML_TAGS = new Set([
-  "a", "b", "strong", "i", "em", "u", "ins", "s", "strike", "del",
-  "span", "tg-spoiler", "tg-emoji", "code", "pre", "blockquote",
-]);
-
-/** Throws like Telegram does on HTML it can't parse. */
-export function assertTelegramHtml(text: string): void {
-  for (let i = text.indexOf("<"); i !== -1; i = text.indexOf("<", i + 1)) {
-    const tag = /^<\/?([a-zA-Z-]+)(?:\s[^<>]*)?>/.exec(text.slice(i));
-    if (!tag || !TELEGRAM_HTML_TAGS.has(tag[1].toLowerCase())) {
-      throw new Error(`Bad Request: can't parse entities: Unsupported start tag at offset ${i} in: ${text}`);
-    }
-  }
-}
-
 function checkHtml(text: unknown, extra: unknown): void {
   if ((extra as { parse_mode?: string } | undefined)?.parse_mode === "HTML") assertTelegramHtml(String(text));
 }
@@ -39,6 +23,9 @@ export const GROUP_CHAT_ID = env.groupChatId;
 export const ADMIN_ID = 1;
 export const ADMIN_DM = 101;
 export const USER_ID = 2;
+// Group creator: an admin too, and the only one who gets backups.
+export const OWNER_ID = 3;
+export const OWNER_DM = 103;
 export const BOT_ID = 42;
 
 export interface ApiCall {
@@ -48,13 +35,16 @@ export interface ApiCall {
 
 /**
  * Fake Telegram API: records every call and answers with just enough for the
- * handlers. `voteCounts` is what stopPoll reports; ADMIN_ID is the only admin.
+ * handlers. `voteCounts` is what stopPoll reports; ADMIN_ID and OWNER_ID
+ * (the creator) are the admins.
  */
 export function createFakeApi(options: { voteCounts?: number[]; unreachableChats?: number[] } = {}) {
   const calls: ApiCall[] = [];
   let nextMessageId = 1000;
   const handlers: Record<string, (...args: unknown[]) => unknown> = {
-    getChatMember: (_chat, userId) => ({ status: userId === ADMIN_ID ? "administrator" : "member" }),
+    getChatMember: (_chat, userId) => ({
+      status: userId === OWNER_ID ? "creator" : userId === ADMIN_ID ? "administrator" : "member",
+    }),
     sendPoll: () => ({ message_id: nextMessageId++, poll: { id: `tg-poll-${nextMessageId}` } }),
     stopPoll: () => ({
       options: (options.voteCounts ?? []).map((voter_count) => ({ voter_count })),

@@ -46,7 +46,7 @@ export function formatMemories(items: MemoryItem[]): string {
     } else {
       const links = entries
         .slice(0, MAX_MEMORY_LINKS)
-        .map((e) => `<a href="${e.link}">${e.what}</a> от ${escapeHtml(e.author)}`);
+        .map((e) => `<a href="${escapeHtml(e.link)}">${escapeHtml(e.what)}</a> от ${escapeHtml(e.author)}`);
       lines.push(links.join(" · "));
       lines.push(`Весь архив: /place ${seq}`);
     }

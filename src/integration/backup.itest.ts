@@ -5,11 +5,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { InputFile } from "grammy";
 import { backupCommand } from "../commands/backup.js";
-import { exportAll, importAll, runBackup } from "../services/backup.js";
+import { OWNER_UNREACHABLE_TEXT, exportAll, importAll, runBackup } from "../services/backup.js";
 import { addSuggestion, approveSuggestion, getBySeq } from "../services/suggestions.js";
 import { registerForNotifications } from "../services/registrations.js";
 import { createPoll } from "../services/polls.js";
-import { ADMIN_DM, ADMIN_ID, GROUP_CHAT_ID, clearFirestore, createFakeApi, createFakeCtx } from "./harness.js";
+import { ADMIN_DM, ADMIN_ID, GROUP_CHAT_ID, OWNER_DM, OWNER_ID, clearFirestore, createFakeApi, createFakeCtx } from "./harness.js";
 
 beforeEach(clearFirestore);
 
@@ -43,8 +43,9 @@ test("import refuses a non-empty database unless asked to overwrite", async () =
   assert.ok((await importAll(backup, { overwrite: true })) > 0);
 });
 
-test("weekly backup is saved to disk and sent to admins", async () => {
+test("weekly backup is saved to disk and sent to the owner only", async () => {
   await seed();
+  await registerForNotifications(OWNER_ID, OWNER_DM, "owner");
   const dir = await mkdtemp(join(tmpdir(), "ride-bot-backup-"));
   const { api, callsTo } = createFakeApi();
 
@@ -53,17 +54,39 @@ test("weekly backup is saved to disk and sent to admins", async () => {
   assert.deepEqual(await readdir(dir), ["ride-bot-backup-2026-09-27.json"]);
   const saved = JSON.parse(await readFile(join(dir, "ride-bot-backup-2026-09-27.json"), "utf8"));
   assert.ok(saved.collections.suggestions);
-  const [sent] = callsTo("sendDocument");
-  assert.equal(sent.args[0], ADMIN_DM);
-  assert.ok(sent.args[1] instanceof InputFile);
-  assert.match((sent.args[2] as { caption: string }).caption, /Резервная копия базы от 27\.09\.2026/);
+  const sends = callsTo("sendDocument");
+  assert.equal(sends.length, 1);
+  assert.equal(sends[0].args[0], OWNER_DM);
+  assert.ok(sends[0].args[1] instanceof InputFile);
+  assert.match((sends[0].args[2] as { caption: string }).caption, /Резервная копия базы от 27\.09\.2026/);
+  assert.equal(callsTo("sendMessage").length, 0);
 });
 
-test("/backup sends the file to the admin who asked", async () => {
+test("weekly backup tells admins when the owner can't be reached", async () => {
   await seed();
-  const fake = createFakeCtx(createFakeApi().api, { userId: ADMIN_ID, chatId: ADMIN_DM });
+  const { api, callsTo } = createFakeApi();
+
+  await runBackup(api, null);
+
+  assert.equal(callsTo("sendDocument").length, 0);
+  const [notice] = callsTo("sendMessage");
+  assert.equal(notice.args[0], ADMIN_DM);
+  assert.equal(notice.args[1], OWNER_UNREACHABLE_TEXT);
+});
+
+test("/backup sends the file to the owner who asked", async () => {
+  await seed();
+  const fake = createFakeCtx(createFakeApi().api, { userId: OWNER_ID, chatId: OWNER_DM });
   await backupCommand(fake.ctx);
   assert.equal(fake.documents.length, 1);
   assert.ok(fake.documents[0].document instanceof InputFile);
   assert.match(fake.documents[0].caption ?? "", /документов/);
+});
+
+test("/backup refuses other admins", async () => {
+  await seed();
+  const fake = createFakeCtx(createFakeApi().api, { userId: ADMIN_ID, chatId: ADMIN_DM });
+  await backupCommand(fake.ctx);
+  assert.equal(fake.documents.length, 0);
+  assert.match(fake.lastReply(), /только владелец группы/);
 });
