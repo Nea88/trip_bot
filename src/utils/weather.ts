@@ -57,3 +57,28 @@ export function formatWeather(w: HourWeather): string {
   if (w.precipitationProbability != null) parts.push(`осадки ${w.precipitationProbability}%`);
   return `Погода к ${w.hour}: ${parts.join(", ")}`;
 }
+
+// Wind (m/s) and temperatures (°C) past which a ride is worth reconsidering.
+const STRONG_WIND = 15;
+const HARD_FROST = -20;
+const HEAT = 35;
+
+/**
+ * What in the start-hour forecast is bad enough to warn admins about, empty
+ * if nothing. Only severe weather: rides go year-round, so ordinary rain,
+ * light snow or frost are not a reason.
+ */
+export function weatherWarnings(w: HourWeather): string[] {
+  const warnings: string[] = [];
+  const code = w.weatherCode;
+  if (code != null) {
+    if (code >= 95) warnings.push("гроза");
+    else if ([56, 57, 66, 67].includes(code)) warnings.push("ледяной дождь");
+    else if ([65, 81, 82].includes(code)) warnings.push("сильный дождь");
+    else if ([75, 86].includes(code)) warnings.push("сильный снегопад");
+  }
+  if (w.windSpeed != null && w.windSpeed >= STRONG_WIND) warnings.push(`ветер ${Math.round(w.windSpeed)} м/с`);
+  if (w.temperature <= HARD_FROST) warnings.push(`мороз ${Math.round(w.temperature)}°C`);
+  if (w.temperature >= HEAT) warnings.push(`жара +${Math.round(w.temperature)}°C`);
+  return warnings;
+}

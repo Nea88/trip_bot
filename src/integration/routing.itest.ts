@@ -100,7 +100,7 @@ test("commands for everyone work where they're allowed", async () => {
   assert.match(texts()[1], /^Команды:/);
 });
 
-test("buttons are admin-only", async () => {
+test("moderation buttons are admin-only", async () => {
   const place = await addSuggestion("дача", USER_ID, "user2", true);
   for (const data of [`rev:${place.id}:approve`, `del:confirm:${place.id}`, "cp:x:cancel", "ph:x:approve"]) {
     const { bot, texts } = makeBot();
@@ -116,6 +116,23 @@ test("buttons are admin-only", async () => {
     } as Update);
     assert.deepEqual(texts(), ["Эта команда доступна только админам группы."], data);
   }
+});
+
+test("a regular member's route rating reaches its handler", async () => {
+  const { bot, sent, texts } = makeBot();
+  await bot.handleUpdate({
+    update_id: updateId++,
+    callback_query: {
+      id: "1",
+      chat_instance: "1",
+      data: "srv:no-such-poll:4",
+      from: { id: USER_ID, is_bot: false, first_name: "Тест" },
+      message: { message_id: 1, date: 0, chat: chat(GROUP_CHAT_ID) },
+    },
+  } as Update);
+  assert.deepEqual(texts(), []);
+  const answer = sent.find((s) => s.method === "answerCallbackQuery");
+  assert.match(String(answer?.payload.text), /больше не принимается/);
 });
 
 test("poll answers reach the vote tracker", async () => {

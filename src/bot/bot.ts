@@ -17,6 +17,7 @@ import { setReminderTextCommand } from "../commands/setReminderText.js";
 import { getReminderCommand } from "../commands/getReminder.js";
 import { getOpenPollCommand } from "../commands/getOpenPoll.js";
 import { closePollCommand, cancelPollCommand, closePollCallback, closePollCallbackPattern } from "../commands/closePoll.js";
+import { cancelRideCommand } from "../commands/cancelRide.js";
 import { restoreCommand } from "../commands/restore.js";
 import { excludeCommand } from "../commands/exclude.js";
 import { excludedCommand } from "../commands/excluded.js";
@@ -47,6 +48,7 @@ import {
   rejectReasonHandler,
 } from "../commands/links.js";
 import { setWelcomeTextCommand, welcomeNewMembers } from "../commands/welcome.js";
+import { routeRatingCallback, routeRatingCallbackPattern } from "../commands/routeRating.js";
 import { rememberAlbumPhotos } from "./middleware/rememberAlbumPhotos.js";
 import { COMMANDS, type CommandName } from "./commandSpecs.js";
 
@@ -73,6 +75,7 @@ const HANDLERS: Record<CommandName, (ctx: Context) => Promise<void>> = {
   meet: meetCommand,
   close_poll: closePollCommand,
   cancel_poll: cancelPollCommand,
+  cancel_ride: cancelRideCommand,
   get_open_poll: getOpenPollCommand,
   set_schedule: setScheduleCommand,
   set_close_schedule: setCloseScheduleCommand,
@@ -110,6 +113,8 @@ export function createBot(): Bot {
   bot.callbackQuery(reviewCallbackPattern, requireAdmin, reviewCallback);
   bot.callbackQuery(photoReviewCallbackPattern, requireAdmin, photoReviewCallback);
   bot.callbackQuery(linkReviewCallbackPattern, requireAdmin, linkReviewCallback);
+  // Сервантопроходимость of a trip's route: any member may rate.
+  bot.callbackQuery(routeRatingCallbackPattern, routeRatingCallback);
 
   // Who voted for what — "went on the trip" means voting for the confirmed place.
   bot.on("poll_answer", pollAnswerHandler);

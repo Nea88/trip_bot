@@ -2,7 +2,7 @@ import type { Api } from "grammy";
 import { sendTripMemories } from "../services/memories.js";
 import { runBackup } from "../services/backup.js";
 import { postYearSummary } from "../services/yearSummary.js";
-import { postStartDayReminder, remindAboutMeet, remindNonVoters } from "../services/weekendNudges.js";
+import { postStartDayReminder, remindAboutMeet, remindNonVoters, warnAboutWeather } from "../services/weekendNudges.js";
 
 export interface FixedJob {
   // Shown to admins if the job fails ("⚠️ Не получилось: <name>").
@@ -23,6 +23,8 @@ export const FIXED_JOBS: FixedJob[] = [
   // The meeting point must be set by Friday 20:00: heads-up, then a nudge.
   { name: "напоминание про точку старта", cron: "0 18 * * 5", run: (api) => remindAboutMeet(api, false) },
   { name: "напоминание про точку старта", cron: "0 20 * * 5", run: (api) => remindAboutMeet(api, true) },
+  // After the start deadline: severe forecast → admins can still /cancel_ride.
+  { name: "предупреждение о погоде", cron: "30 20 * * 5", run: warnAboutWeather },
   { name: "утреннее напоминание о старте", cron: "0 7 * * 6", run: postStartDayReminder },
   // Sunday night, when nothing else is going on.
   { name: "резервная копия базы", cron: "0 3 * * 0", run: (api) => runBackup(api) },

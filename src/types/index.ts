@@ -108,6 +108,17 @@ export interface PollVote {
   updatedAt: Timestamp;
 }
 
+// A member's сервантопроходимость score (1–5, higher = easier: how the
+// group's Honda CR-V copes) for the route
+// of a confirmed trip. Doc id: `${pollId}_${userId}`.
+export interface RouteRating {
+  pollId: string;
+  suggestionId: string;
+  userId: number;
+  score: number;
+  updatedAt: Timestamp;
+}
+
 // A useful link for the group (/links). Members' links wait for an admin.
 export type LinkStatus = "pending" | "approved" | "rejected";
 

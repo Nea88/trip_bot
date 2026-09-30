@@ -8,7 +8,9 @@ import { missingVoters } from "../utils/participation.js";
 import { getGroupConfig } from "./groupConfig.js";
 import { getOpenPoll } from "./polls.js";
 import { listVotes } from "./pollVotes.js";
-import { startWeatherLine } from "./weather.js";
+import { startWeather, startWeatherLine } from "./weather.js";
+import { formatWeather, weatherWarnings } from "../utils/weather.js";
+import { upcomingTripDate } from "../utils/tripDate.js";
 import { notifyAdmins } from "./notifications.js";
 
 const MEET_EXAMPLE = "/meet 09:00 АЗС на выезде из города";
@@ -71,4 +73,28 @@ export async function remindAboutMeet(api: Api, deadlinePassed: boolean): Promis
     ? `Уже 20:00 пятницы, а точка и время старта на завтра не указаны. Укажите: ${MEET_EXAMPLE}`
     : `До 20:00 нужно указать точку и время старта субботней поездки: ${MEET_EXAMPLE}`;
   await notifyAdmins(api, config.groupChatId, text);
+}
+
+/**
+ * Friday evening, once the start is set: if the forecast for its hour is
+ * severe, admins hear it while there's still time to call the ride off.
+ * Needs the start's location (/meet in reply to a geo pin).
+ */
+export async function warnAboutWeather(api: Api): Promise<void> {
+  const config = await getGroupConfig();
+  const poll = await getOpenPoll(config.groupChatId);
+  if (!poll?.meetTime || poll.meetLatitude == null || poll.meetLongitude == null) return;
+
+  const tripDate = upcomingTripDate(now(), env.defaultTimezone);
+  const hour = await startWeather(poll.meetLatitude, poll.meetLongitude, tripDate, poll.meetTime, env.defaultTimezone);
+  const warnings = hour ? weatherWarnings(hour) : [];
+  if (!hour || warnings.length === 0) return;
+
+  await notifyAdmins(
+    api,
+    config.groupChatId,
+    `⚠️ Плохой прогноз на завтрашний старт в ${poll.meetTime}: ${warnings.join(", ")}.\n` +
+      `${formatWeather(hour)}\n` +
+      "Если решите отменить поездку — /cancel_ride <причина>, группа получит объявление.",
+  );
 }

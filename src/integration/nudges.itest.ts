@@ -107,7 +107,7 @@ test("confirming the trip asks the riders by name to save photos; /history shows
 
   const { api, callsTo } = createFakeApi();
   await closePollCallback(createFakeCtx(api, { userId: ADMIN_ID, callbackData: `cp:${poll.id}:confirm:${dacha}` }).ctx as never);
-  const announce = callsTo("sendMessage").at(-1)!;
+  const announce = callsTo("sendMessage").find((c) => /^Съездили в/.test(c.args[1] as string))!;
   assert.equal(
     announce.args[1],
     "Съездили в «дача &lt;у озера&gt;»!\n<a href=\"tg://user?id=5\">user5</a>, вы ездили — ответьте на фото с поездки командой /photo 1 — они попадут в архив места (/place 1).",

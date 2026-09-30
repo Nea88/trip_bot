@@ -64,6 +64,8 @@ export const COMMANDS = [
     help: "/close_poll — закрыть текущий опрос и подтвердить, куда съездили" },
   { command: "cancel_poll", menu: "Закрыть опрос без подсчёта результатов", audience: "admin", where: "group",
     help: "/cancel_poll — закрыть текущий опрос без подсчёта результатов (место не исключается)" },
+  { command: "cancel_ride", menu: "Отменить субботнюю поездку", audience: "admin", where: "any",
+    help: "/cancel_ride [причина] — отменить субботнюю поездку: опрос закрывается без победителя, места остаются в пуле, в группе — объявление с упоминанием проголосовавших" },
   { command: "get_open_poll", menu: "Ссылка на текущий открытый опрос", audience: "admin", where: "any",
     help: "/get_open_poll — получить ссылку на текущий открытый опрос" },
   { command: "set_schedule", menu: "Настроить автосоздание опроса", audience: "admin", where: "any",

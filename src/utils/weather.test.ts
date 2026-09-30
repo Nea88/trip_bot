@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { describeWeatherCode, formatWeather, weatherAt, type HourlyForecast } from "./weather.js";
+import { describeWeatherCode, formatWeather, weatherAt, weatherWarnings, type HourWeather, type HourlyForecast } from "./weather.js";
 
 const forecast: HourlyForecast = {
   hourly: {
@@ -42,4 +42,18 @@ test("weather codes map to Russian words", () => {
   assert.equal(describeWeatherCode(0), "ясно");
   assert.equal(describeWeatherCode(63), "дождь");
   assert.equal(describeWeatherCode(95), "гроза");
+});
+
+test("weatherWarnings flags only severe weather", () => {
+  const hour = (over: Partial<HourWeather>): HourWeather => ({
+    hour: "09:00", temperature: 10, precipitationProbability: 90, weatherCode: 61, windSpeed: 5, ...over,
+  });
+  assert.deepEqual(weatherWarnings(hour({})), [], "ordinary rain is fine");
+  assert.deepEqual(weatherWarnings(hour({ temperature: -8, weatherCode: 71 })), [], "light snow and frost are fine");
+  assert.deepEqual(weatherWarnings(hour({ weatherCode: 95 })), ["гроза"]);
+  assert.deepEqual(weatherWarnings(hour({ weatherCode: 66, temperature: -1 })), ["ледяной дождь"]);
+  assert.deepEqual(weatherWarnings(hour({ weatherCode: 82, windSpeed: 17.4 })), ["сильный дождь", "ветер 17 м/с"]);
+  assert.deepEqual(weatherWarnings(hour({ weatherCode: 75 })), ["сильный снегопад"]);
+  assert.deepEqual(weatherWarnings(hour({ weatherCode: 0, temperature: -24.6 })), ["мороз -25°C"]);
+  assert.deepEqual(weatherWarnings(hour({ weatherCode: null, windSpeed: null, temperature: 36 })), ["жара +36°C"]);
 });

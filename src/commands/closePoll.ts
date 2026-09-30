@@ -15,6 +15,7 @@ import { ridersOf } from "../utils/participation.js";
 import { mentionHtml } from "../utils/userName.js";
 import { escapeHtml } from "../utils/html.js";
 import { listVotesForPoll } from "../services/pollVotes.js";
+import { postRatingPrompt } from "./routeRating.js";
 
 export async function closePollCommand(ctx: Context): Promise<void> {
   const config = await getGroupConfig();
@@ -93,6 +94,7 @@ export async function closePollCallback(ctx: CallbackQueryContext<Context>): Pro
       (riders.length > 0 ? `${mentions}, вы ездили — ${photoAsk}` : `Сохраните фото: ${photoAsk}`),
     { parse_mode: "HTML" },
   );
+  await postRatingPrompt(ctx.api, poll.groupChatId, pollId, suggestion);
 }
 
 export const closePollCallbackPattern = new RegExp(`^${CLOSE_POLL_CALLBACK_PREFIX}:`);

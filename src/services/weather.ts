@@ -1,4 +1,4 @@
-import { formatWeather, weatherAt, type HourlyForecast } from "../utils/weather.js";
+import { formatWeather, weatherAt, type HourWeather, type HourlyForecast } from "../utils/weather.js";
 
 type Fetcher = (url: string) => Promise<Response>;
 
@@ -10,16 +10,16 @@ export function setWeatherFetcher(fn: Fetcher): void {
 }
 
 /**
- * One line with the forecast for the ride's start (Open-Meteo, free, no key),
- * or null if it can't be had — the announcement then just goes without it.
+ * The forecast for the hour the ride starts (Open-Meteo, free, no key), or
+ * null if it can't be had — callers then just go without it.
  */
-export async function startWeatherLine(
+export async function startWeather(
   latitude: number,
   longitude: number,
   isoDate: string,
   time: string,
   timezone: string,
-): Promise<string | null> {
+): Promise<HourWeather | null> {
   const params = new URLSearchParams({
     latitude: String(latitude),
     longitude: String(longitude),
@@ -32,10 +32,21 @@ export async function startWeatherLine(
   try {
     const res = await fetcher(`https://api.open-meteo.com/v1/forecast?${params}`);
     if (!res.ok) throw new Error(`Open-Meteo HTTP ${res.status}`);
-    const hour = weatherAt((await res.json()) as HourlyForecast, isoDate, time);
-    return hour ? formatWeather(hour) : null;
+    return weatherAt((await res.json()) as HourlyForecast, isoDate, time);
   } catch (err) {
     console.error("[weather] Forecast unavailable:", err instanceof Error ? err.message : err);
     return null;
   }
+}
+
+// One line for the start announcement, or null without a forecast.
+export async function startWeatherLine(
+  latitude: number,
+  longitude: number,
+  isoDate: string,
+  time: string,
+  timezone: string,
+): Promise<string | null> {
+  const hour = await startWeather(latitude, longitude, isoDate, time, timezone);
+  return hour ? formatWeather(hour) : null;
 }

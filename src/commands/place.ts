@@ -2,6 +2,8 @@ import type { Context } from "grammy";
 import { getBySeq } from "../services/suggestions.js";
 import { listApprovedForSuggestion } from "../services/placePhotos.js";
 import { listWinsForSuggestion } from "../services/polls.js";
+import { servantSummaryFor } from "../services/routeRatings.js";
+import { formatSummary } from "../utils/servantScale.js";
 import { chunkLines } from "../utils/messageChunks.js";
 import { describeItems } from "../utils/photoMessage.js";
 import { groupArchive } from "../utils/placeArchive.js";
@@ -34,9 +36,10 @@ export async function placeCommand(ctx: Context): Promise<void> {
     return;
   }
 
-  const [photos, wins] = await Promise.all([
+  const [photos, wins, servant] = await Promise.all([
     listApprovedForSuggestion(suggestion.id),
     listWinsForSuggestion(suggestion.id),
+    servantSummaryFor(suggestion.id),
   ]);
 
   const lines = [
@@ -48,6 +51,7 @@ export async function placeCommand(ctx: Context): Promise<void> {
     .filter((date): date is string => Boolean(date))
     .map(formatIsoDate);
   lines.push(tripDates.length > 0 ? `Поездки: ${tripDates.join(", ")}` : "Поездок сюда через бота ещё не было.");
+  if (servant) lines.push(`🚙 Сервантопроходимость маршрута: ${formatSummary(servant)}`);
 
   if (photos.length === 0) {
     lines.push(`Архив пока пуст. Добавить: ответьте на фото или сообщение командой /photo ${seq}`);

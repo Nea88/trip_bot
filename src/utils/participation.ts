@@ -70,3 +70,8 @@ export function missingVoters(votes: VoteRecord[], pollId: string): VoteRecord[]
   }
   return [...regulars.values()].sort((a, b) => a.username.localeCompare(b.username));
 }
+
+// Members who voted for a real place (not Мимокрокодил) — the ones planning to go.
+export function plannedRiders(votes: VoteRecord[], optionSuggestionIds: (string | null)[]): VoteRecord[] {
+  return votes.filter((vote) => vote.optionIndexes.some((i) => optionSuggestionIds[i] != null));
+}
