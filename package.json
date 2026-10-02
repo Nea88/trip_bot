@@ -19,7 +19,7 @@
   "type": "module",
   "dependencies": {
     "@grammyjs/auto-retry": "^2.0.2",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.4",
     "firebase-admin": "^14.5.0",
     "grammy": "^1.44.0",
     "luxon": "^3.7.2",
