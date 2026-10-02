@@ -7,7 +7,12 @@ import { createPollIfPossible } from "../services/pollCreation.js";
 import { getLatestPollCreatedAt, getOpenPoll } from "../services/polls.js";
 import { CLOSE_OUTCOME_TEXT, closeOpenPoll } from "../services/pollClosing.js";
 import { DEFAULT_REMINDER_TEXT } from "../constants.js";
-import { lastScheduledOccurrence, shouldCloseMissedPoll, shouldCreateMissedPoll } from "./missedPoll.js";
+import {
+  lastScheduledOccurrence,
+  MISSED_POLL_GRACE_HOURS,
+  shouldCloseMissedPoll,
+  shouldCreateMissedPoll,
+} from "./missedPoll.js";
 import { backupDue, yearSummaryDue } from "./catchUp.js";
 import { runBackup } from "../services/backup.js";
 import { postYearSummary } from "../services/yearSummary.js";
@@ -21,10 +26,19 @@ let currentCloseTask: ScheduledTask | null = null;
 // Fixed-time jobs from FIXED_JOBS (fixedJobs.ts).
 const fixedTasks: ScheduledTask[] = [];
 
+// node-cron silently drops a run whose timer fires more than a second late
+// (it only logs "missed execution"). That happens when the wall clock jumps
+// forward after the timer was armed — e.g. an NTP sync on the Pi, which has
+// no hardware clock — so run late jobs instead of skipping them.
+const CRON_OPTIONS = { timezone: env.defaultTimezone, missedExecutionTolerance: 60 * 60 * 1000 };
+// The weekly poll and its close matter most; late still beats never, within
+// the same window the startup catch-up uses.
+const WEEKLY_POLL_CRON_OPTIONS = { ...CRON_OPTIONS, missedExecutionTolerance: MISSED_POLL_GRACE_HOURS * 60 * 60 * 1000 };
+
 export function scheduleFixedJobs(api: Api): void {
   for (const job of FIXED_JOBS) {
     fixedTasks.push(
-      schedule(job.cron, () => runSafely(api, job.name, () => job.run(api)), { timezone: env.defaultTimezone }),
+      schedule(job.cron, () => runSafely(api, job.name, () => job.run(api)), CRON_OPTIONS),
     );
   }
 }
@@ -57,9 +71,7 @@ export async function rescheduleFromConfig(api: Api): Promise<void> {
   const [hour, minute] = config.scheduleTime.split(":").map(Number);
   const expression = `${minute} ${hour} * * ${config.scheduleDay}`;
 
-  currentPollTask = schedule(expression, () => runSafely(api, "создание опроса по расписанию", () => runScheduledPollCreation(api)), {
-    timezone: env.defaultTimezone,
-  });
+  currentPollTask = schedule(expression, () => runSafely(api, "создание опроса по расписанию", () => runScheduledPollCreation(api)), WEEKLY_POLL_CRON_OPTIONS);
 }
 
 /**
@@ -126,9 +138,7 @@ export async function rescheduleReminderFromConfig(api: Api): Promise<void> {
   const [hour, minute] = config.reminderTime.split(":").map(Number);
   const expression = `${minute} ${hour} * * *`;
 
-  currentReminderTask = schedule(expression, () => runSafely(api, "памятка про /suggest", () => runReminder(api)), {
-    timezone: env.defaultTimezone,
-  });
+  currentReminderTask = schedule(expression, () => runSafely(api, "памятка про /suggest", () => runReminder(api)), CRON_OPTIONS);
 }
 
 
@@ -157,9 +167,7 @@ export async function rescheduleCloseFromConfig(api: Api): Promise<void> {
   const [hour, minute] = config.closeScheduleTime.split(":").map(Number);
   const expression = `${minute} ${hour} * * ${config.closeScheduleDay}`;
 
-  currentCloseTask = schedule(expression, () => runSafely(api, "автозакрытие опроса", () => runScheduledPollClose(api)), {
-    timezone: env.defaultTimezone,
-  });
+  currentCloseTask = schedule(expression, () => runSafely(api, "автозакрытие опроса", () => runScheduledPollClose(api)), WEEKLY_POLL_CRON_OPTIONS);
 }
 
 // Called at startup: close a poll whose scheduled auto-close was missed.
