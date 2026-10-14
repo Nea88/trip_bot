@@ -27,8 +27,8 @@
   },
   "devDependencies": {
     "@types/luxon": "^3.7.2",
-    "@types/node": "^26.1.1",
-    "oxlint": "^1.16.0",
+    "@types/node": "^26.6.5",
+    "oxlint": "^1.87.0",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"
   },
