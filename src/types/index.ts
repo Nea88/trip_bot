@@ -1,4 +1,5 @@
 import type { Timestamp } from "firebase-admin/firestore";
+import type { GeoPoint } from "../utils/routeMap.js";
 
 // New suggestions start "pending" (awaiting admin review) until approved
 // ("active") or turned down ("rejected" — kept around so the same text can't
@@ -23,6 +24,17 @@ export interface Suggestion {
   rejectedAt: Timestamp | null;
   // Approved trip photos attached to this place; missing means 0.
   photoCount?: number;
+  // Start/finish found by geocoding the text, for the poll's route map;
+  // missing until the place is first in a poll.
+  routeGeo?: RouteGeo;
+}
+
+// sourceText is the text that was geocoded: after /edit it differs from
+// text, and the place is geocoded again. null = not found on the map.
+export interface RouteGeo {
+  sourceText: string;
+  start: GeoPoint | null;
+  finish: GeoPoint | null;
 }
 
 export interface SuggestionWithId extends Suggestion {

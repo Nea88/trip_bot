@@ -166,7 +166,7 @@ test("new members are welcomed with what the bot does and where the links are", 
   });
   await welcomeNewMembers(join.ctx);
   assert.match(join.lastReply(), /^👋 Добро пожаловать, <a href="tg:\/\/user\?id=7">Аня<\/a>!\n\n/);
-  assert.match(join.lastReply(), /\/links[\s\S]*\/addlink &lt;ссылка&gt; &lt;описание&gt;/);
+  assert.match(join.lastReply(), /Полезные ссылки группы — \/links\. Все команды бота — \/help/);
   assert.doesNotMatch(join.lastReply(), /SomeBot/);
 
   await setWelcomeTextCommand(createFakeCtx(api, { userId: ADMIN_ID, match: "Привет! Правила — в закрепе." }).ctx);

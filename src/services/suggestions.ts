@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { db } from "../firebase/firestore.js";
-import type { Suggestion, SuggestionWithId } from "../types/index.js";
+import type { RouteGeo, Suggestion, SuggestionWithId } from "../types/index.js";
 import { normalizeSuggestionText } from "../utils/suggestionText.js";
 import { deleteAllForSuggestion } from "./placePhotos.js";
 
@@ -128,4 +128,8 @@ export async function getById(id: string): Promise<SuggestionWithId | null> {
   const snap = await suggestions.doc(id).get();
   if (!snap.exists) return null;
   return { id: snap.id, ...(snap.data() as Suggestion) };
+}
+
+export async function setRouteGeo(id: string, routeGeo: RouteGeo): Promise<void> {
+  await suggestions.doc(id).update({ routeGeo });
 }

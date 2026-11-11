@@ -16,6 +16,7 @@ import { setReminderTimeCommand } from "../commands/setReminderTime.js";
 import { setReminderTextCommand } from "../commands/setReminderText.js";
 import { getReminderCommand } from "../commands/getReminder.js";
 import { getOpenPollCommand } from "../commands/getOpenPoll.js";
+import { routeMapCommand } from "../commands/routeMap.js";
 import { closePollCommand, cancelPollCommand, closePollCallback, closePollCallbackPattern } from "../commands/closePoll.js";
 import { cancelRideCommand } from "../commands/cancelRide.js";
 import { restoreCommand } from "../commands/restore.js";
@@ -77,6 +78,7 @@ const HANDLERS: Record<CommandName, (ctx: Context) => Promise<void>> = {
   cancel_poll: cancelPollCommand,
   cancel_ride: cancelRideCommand,
   get_open_poll: getOpenPollCommand,
+  route_map: routeMapCommand,
   set_schedule: setScheduleCommand,
   set_close_schedule: setCloseScheduleCommand,
   get_schedule: getScheduleCommand,

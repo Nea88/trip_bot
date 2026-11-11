@@ -1,6 +1,6 @@
 {
   "name": "ride-bot",
-  "version": "1.20.3",
+  "version": "1.21.0",
   "description": "Telegram bot for group ride destination planning",
   "main": "index.js",
   "scripts": {
@@ -23,11 +23,13 @@
     "firebase-admin": "^14.5.0",
     "grammy": "^1.44.0",
     "luxon": "^3.7.2",
-    "node-cron": "^4.6.0"
+    "node-cron": "^4.6.0",
+    "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "@types/luxon": "^3.7.2",
     "@types/node": "^26.1.1",
+    "@types/pngjs": "^6.0.5",
     "oxlint": "^1.16.0",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2"

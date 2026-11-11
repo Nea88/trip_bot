@@ -30,3 +30,6 @@ export const DEFAULT_WELCOME_TEXT =
   "🛟 Застряли, сел аккумулятор или нужна буксировка? @drivefolks_armenia_bot — бесплатная взаимопомощь водителей в Армении: " +
   "бот найдёт водителей рядом, которые готовы помочь. Это не замена 112 — если угроза жизни, звоните туда.\n\n" +
   "🔗 Полезные ссылки группы — /links. Все команды бота — /help";
+
+// OpenStreetMap's Nominatim and tile servers require an identifying User-Agent.
+export const OSM_USER_AGENT = "ride-bot/1.0 (Telegram group ride planner)";

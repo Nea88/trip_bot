@@ -4,6 +4,7 @@ import { createPoll, getOpenPoll, listAllPolls } from "./polls.js";
 import { lastShownAtFromPolls, pickPollOptions } from "../utils/rotation.js";
 import type { PollDocWithId } from "../types/index.js";
 import { acquireLock, releaseLock } from "./locks.js";
+import { postRouteMap } from "./routeMap.js";
 import { MAX_REAL_POLL_OPTIONS, MIMOKROKODIL_TEXT } from "../constants.js";
 
 export type CreatePollResult =
@@ -57,6 +58,10 @@ async function createPollUnlocked(
   } catch (err) {
     console.error("[pollCreation] Failed to pin poll message:", err);
   }
+
+  // Helps to picture the options: "Семёновка — Гош" and "Цовагюх — Гош"
+  // turn out to start next to each other.
+  await postRouteMap(api, groupChatId, chosen, message.message_id);
 
   return { kind: "created", poll, optionCount: optionTexts.length };
 }

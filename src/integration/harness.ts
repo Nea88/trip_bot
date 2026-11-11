@@ -5,6 +5,8 @@ import { setClock } from "../utils/clock.js";
 import { assertTelegramHtml } from "../utils/html.js";
 import { resetGroupConfigCache } from "../services/groupConfig.js";
 import { setWeatherFetcher } from "../services/weather.js";
+import { setGeocodeFetcher } from "../services/geocoding.js";
+import { setTileFetcher } from "../services/routeMap.js";
 
 // Every integration test runs at a fixed "now": Sunday 27.09.2026 12:00 in
 // the group's timezone — the day polls auto-close and trips get confirmed.
@@ -12,6 +14,13 @@ export const NOW = DateTime.fromISO("2026-09-27T12:00", { zone: "Europe/Moscow" 
 setClock(() => NOW);
 // No network in tests: the forecast is "unavailable" unless a test stubs it.
 setWeatherFetcher(async () => {
+  throw new Error("no network in tests");
+});
+// Same for the poll's route map: places aren't found, so there is no map.
+setGeocodeFetcher(async () => {
+  throw new Error("no network in tests");
+});
+setTileFetcher(async () => {
   throw new Error("no network in tests");
 });
 
