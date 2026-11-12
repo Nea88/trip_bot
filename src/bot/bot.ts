@@ -17,6 +17,7 @@ import { setReminderTextCommand } from "../commands/setReminderText.js";
 import { getReminderCommand } from "../commands/getReminder.js";
 import { getOpenPollCommand } from "../commands/getOpenPoll.js";
 import { routeMapCommand } from "../commands/routeMap.js";
+import { geoPointAnswerHandler } from "../commands/geoPointAnswer.js";
 import { closePollCommand, cancelPollCommand, closePollCallback, closePollCallbackPattern } from "../commands/closePoll.js";
 import { cancelRideCommand } from "../commands/cancelRide.js";
 import { restoreCommand } from "../commands/restore.js";
@@ -124,6 +125,8 @@ export function createBot(): Bot {
   bot.on("message:new_chat_members", welcomeNewMembers);
   // Admin's reply with the reason for rejecting a link (passes other text on).
   bot.on("message:text", rejectReasonHandler);
+  // The owner's coordinates for a point the route map couldn't find.
+  bot.on("message:text", geoPointAnswerHandler);
 
   bot.catch(handleBotError);
 

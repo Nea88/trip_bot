@@ -1,6 +1,7 @@
 // Pure parts of the poll's route map: Web Mercator maths, which OSM tiles
 // cover the picture, drawing markers on an RGBA buffer, and the caption.
 // Fetching tiles and PNG encoding live in services/routeMap.ts.
+import type { PointKind } from "./routeText.js";
 
 export interface GeoPoint {
   lat: number;
@@ -100,13 +101,13 @@ export function tilesFor(view: MapView): TilePlacement[] {
 
 export interface RouteToDraw {
   colorIndex: number;
-  start: GeoPoint | null;
-  finish: GeoPoint | null;
+  // Found points only, in route order.
+  points: { point: GeoPoint; kind: PointKind }[];
 }
 
 interface Marker {
   route: number;
-  kind: "start" | "finish";
+  kind: PointKind;
   x: number;
   y: number;
 }
@@ -116,16 +117,14 @@ const OVERLAP_PX = 14;
 const SPREAD_PX = 10;
 
 /**
- * Picture positions of every marker. Markers on (almost) the same spot —
- * two routes from one village — are spread on a small ring around it, so
- * each colour stays visible.
+ * Picture positions of every marker, per route in route order. Markers on
+ * (almost) the same spot — two routes from one village — are spread on a
+ * small ring around it, so each colour stays visible.
  */
 export function placeMarkers(routes: RouteToDraw[], view: MapView): Marker[] {
   const markers: Marker[] = [];
   routes.forEach((route, i) => {
-    for (const kind of ["start", "finish"] as const) {
-      const point = route[kind];
-      if (!point) continue;
+    for (const { point, kind } of route.points) {
       const p = project(point, view.zoom);
       markers.push({ route: i, kind, x: p.x - view.originX, y: p.y - view.originY });
     }
@@ -196,27 +195,30 @@ function square(canvas: Canvas, cx: number, cy: number, half: number, rgb: Rgb):
 }
 
 /**
- * Draws every route over the map: a line from start to finish, a circle at
- * the start and a square at the finish, each with a white outline so it
- * reads on any background. Lines go first so no marker is hidden under one.
+ * Draws every route over the map: a line through its points, a circle at
+ * the start, small dots at via points and a square at the finish, each with
+ * a white outline so it reads on any background. Lines go first so no
+ * marker is hidden under one; via points before ends for the same reason.
  */
 export function drawRoutes(canvas: Canvas, routes: RouteToDraw[], view: MapView): void {
   const markers = placeMarkers(routes, view);
   const colorOf = (route: number) => ROUTE_COLORS[routes[route].colorIndex % ROUTE_COLORS.length].rgb;
-  const pairs = routes.map((_, i) => ({
-    start: markers.find((m) => m.route === i && m.kind === "start"),
-    finish: markers.find((m) => m.route === i && m.kind === "finish"),
-  }));
-  pairs.forEach(({ start, finish }) => {
-    if (start && finish) line(canvas, start.x, start.y, finish.x, finish.y, 4.5, WHITE);
-  });
-  pairs.forEach(({ start, finish }, i) => {
-    if (start && finish) line(canvas, start.x, start.y, finish.x, finish.y, 2.5, colorOf(i));
-  });
-  for (const m of markers) {
+  const paths = routes.map((_, i) => markers.filter((m) => m.route === i));
+  for (const [radius, color] of [[4.5, null], [2.5, "route"]] as const) {
+    paths.forEach((path, i) => {
+      for (let k = 1; k < path.length; k++) {
+        line(canvas, path[k - 1].x, path[k - 1].y, path[k].x, path[k].y, radius, color ? colorOf(i) : WHITE);
+      }
+    });
+  }
+  const ordered = [...markers.filter((m) => m.kind === "via"), ...markers.filter((m) => m.kind !== "via")];
+  for (const m of ordered) {
     if (m.kind === "start") {
       circle(canvas, m.x, m.y, 10, WHITE);
       circle(canvas, m.x, m.y, 7.5, colorOf(m.route));
+    } else if (m.kind === "via") {
+      circle(canvas, m.x, m.y, 6.5, WHITE);
+      circle(canvas, m.x, m.y, 4.5, colorOf(m.route));
     } else {
       square(canvas, m.x, m.y, 9, WHITE);
       square(canvas, m.x, m.y, 6.5, colorOf(m.route));
@@ -228,21 +230,30 @@ export interface CaptionRoute {
   text: string;
   // null when nothing in the text was found on the map.
   colorIndex: number | null;
+  // Points of the route that weren't found (when some were).
+  missing: string[];
 }
 
 const MAX_NAME_LENGTH = 80;
 
+function shorten(text: string): string {
+  return text.length > MAX_NAME_LENGTH ? `${text.slice(0, MAX_NAME_LENGTH - 1)}…` : text;
+}
+
 // Numbers follow the poll's options.
 export function routeMapCaption(routes: CaptionRoute[]): string {
-  const lines = ["🗺 Варианты из опроса на карте: ● старт, ■ финиш"];
+  const lines = ["🗺 Варианты из опроса на карте: ● старт, • через, ■ финиш"];
   routes.forEach((route, i) => {
-    const name = route.text.length > MAX_NAME_LENGTH ? `${route.text.slice(0, MAX_NAME_LENGTH - 1)}…` : route.text;
-    lines.push(
-      route.colorIndex === null
-        ? `${NOT_FOUND_EMOJI} ${i + 1}. ${name} — не нашёл на карте`
-        : `${ROUTE_COLORS[route.colorIndex % ROUTE_COLORS.length].emoji} ${i + 1}. ${name}`,
-    );
+    const name = shorten(route.text);
+    if (route.colorIndex === null) {
+      lines.push(`${NOT_FOUND_EMOJI} ${i + 1}. ${name} — не нашёл на карте`);
+      return;
+    }
+    const missing = route.missing.length > 0 ? ` (без ${route.missing.map((m) => `«${shorten(m)}»`).join(", ")})` : "";
+    lines.push(`${ROUTE_COLORS[route.colorIndex % ROUTE_COLORS.length].emoji} ${i + 1}. ${name}${missing}`);
   });
   lines.push("", "Карта © участники OpenStreetMap");
-  return lines.join("\n");
+  // Telegram's caption limit.
+  const caption = lines.join("\n");
+  return caption.length > 1024 ? `${caption.slice(0, 1023)}…` : caption;
 }

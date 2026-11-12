@@ -60,8 +60,9 @@ async function createPollUnlocked(
   }
 
   // Helps to picture the options: "Семёновка — Гош" and "Цовагюх — Гош"
-  // turn out to start next to each other.
-  await postRouteMap(api, groupChatId, chosen, message.message_id);
+  // turn out to start next to each other. Points not found are asked of the
+  // owner, and the map is redrawn once they answer.
+  await postRouteMap(api, poll, chosen);
 
   return { kind: "created", poll, optionCount: optionTexts.length };
 }

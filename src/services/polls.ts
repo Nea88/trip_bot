@@ -134,6 +134,10 @@ export async function setMeet(
   });
 }
 
+export async function setRouteMapMessageId(pollId: string, messageId: number): Promise<void> {
+  await polls.doc(pollId).update({ routeMapMessageId: messageId });
+}
+
 export async function getLatestPollCreatedAt(): Promise<Date | null> {
   const snap = await polls.orderBy("createdAt", "desc").limit(1).get();
   if (snap.empty) return null;

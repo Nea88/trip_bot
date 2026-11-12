@@ -1,10 +1,6 @@
-// What a place's text says about where the route starts and ends, for
-// geocoding: "Семёновка — Гош" → start "Семёновка", finish "Гош". Without a
-// separator the whole text is one point (drawn as a start only).
-export interface RouteNames {
-  start: string;
-  finish: string | null;
-}
+// The points a place's text names, for geocoding, in route order:
+// "Ереван — Севан — Дилижан" → start, via point, finish. Without a separator
+// the whole text is one point.
 
 // Spaced dashes only, so names like "Ай-Петри" stay whole.
 const SEPARATOR = /\s+[—–-]\s+|\s*(?:→|->|\/)\s*/;
@@ -17,11 +13,21 @@ function clean(name: string): string {
     .trim();
 }
 
-export function splitRoute(text: string): RouteNames | null {
-  const parts = text.split(SEPARATOR).map(clean).filter(Boolean);
-  if (parts.length === 0) return null;
-  if (parts.length === 1) return { start: parts[0], finish: null };
-  return { start: parts[0], finish: parts.at(-1)! };
+export function splitRoute(text: string): string[] {
+  return text.split(SEPARATOR).map(clean).filter(Boolean);
+}
+
+export type PointKind = "start" | "via" | "finish";
+
+// A one-point place is drawn as a start.
+export function pointKind(index: number, count: number): PointKind {
+  if (index === 0) return "start";
+  return index === count - 1 ? "finish" : "via";
+}
+
+// One key per name, so "Семёновка" and "семеновка" share a clarified point.
+export function normalizePlaceName(name: string): string {
+  return name.trim().toLowerCase().replace(/ё/g, "е").replace(/\s+/g, " ");
 }
 
 // Words OSM usually leaves out of the name: "озеро Парз" is just "Парз".

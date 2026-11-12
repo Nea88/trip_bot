@@ -51,8 +51,8 @@ test("tilesFor: the tiles cover the whole picture", () => {
 
 test("placeMarkers: routes from the same village get spread apart", () => {
   const routes = [
-    { colorIndex: 0, start: SEMYONOVKA, finish: GOSH },
-    { colorIndex: 1, start: SEMYONOVKA, finish: TSOVAGYUGH },
+    { colorIndex: 0, points: [{ point: SEMYONOVKA, kind: "start" as const }, { point: GOSH, kind: "finish" as const }] },
+    { colorIndex: 1, points: [{ point: SEMYONOVKA, kind: "start" as const }, { point: TSOVAGYUGH, kind: "finish" as const }] },
   ];
   const markers = placeMarkers(routes, fitView([SEMYONOVKA, GOSH, TSOVAGYUGH]));
   const starts = markers.filter((m) => m.kind === "start");
@@ -63,28 +63,35 @@ test("placeMarkers: routes from the same village get spread apart", () => {
 test("drawRoutes: start in the route's colour, picture otherwise untouched", () => {
   const canvas = { width: MAP_WIDTH, height: MAP_HEIGHT, data: new Uint8Array(MAP_WIDTH * MAP_HEIGHT * 4) };
   const view = fitView([SEMYONOVKA, GOSH]);
-  drawRoutes(canvas, [{ colorIndex: 0, start: SEMYONOVKA, finish: GOSH }], view);
-  const start = project(SEMYONOVKA, view.zoom);
-  const i = (Math.floor(start.y - view.originY) * MAP_WIDTH + Math.floor(start.x - view.originX)) * 4;
-  assert.deepEqual([...canvas.data.slice(i, i + 4)], [229, 57, 53, 255]);
+  drawRoutes(
+    canvas,
+    [{ colorIndex: 0, points: [{ point: SEMYONOVKA, kind: "start" }, { point: TSOVAGYUGH, kind: "via" }, { point: GOSH, kind: "finish" }] }],
+    view,
+  );
+  const colorAt = (point: { lat: number; lon: number }) => {
+    const p = project(point, view.zoom);
+    const i = (Math.floor(p.y - view.originY) * MAP_WIDTH + Math.floor(p.x - view.originX)) * 4;
+    return [...canvas.data.slice(i, i + 4)];
+  };
+  for (const point of [SEMYONOVKA, TSOVAGYUGH, GOSH]) assert.deepEqual(colorAt(point), [229, 57, 53, 255]);
   assert.equal(canvas.data[3], 0);
 });
 
-test("routeMapCaption: numbers follow the poll, unknown places are marked", () => {
+test("routeMapCaption: numbers follow the poll, unknown places and points are marked", () => {
   assert.equal(
     routeMapCaption([
-      { text: "Семёновка — Гош", colorIndex: 0 },
-      { text: "Цовагюх — Гош", colorIndex: 1 },
-      { text: "Тайное озеро", colorIndex: null },
+      { text: "Семёновка — Гош", colorIndex: 0, missing: [] },
+      { text: "Цовагюх — Тайник — Гош", colorIndex: 1, missing: ["Тайник"] },
+      { text: "Тайное озеро", colorIndex: null, missing: ["Тайное озеро"] },
     ]),
     [
-      "🗺 Варианты из опроса на карте: ● старт, ■ финиш",
+      "🗺 Варианты из опроса на карте: ● старт, • через, ■ финиш",
       "🔴 1. Семёновка — Гош",
-      "🔵 2. Цовагюх — Гош",
+      "🔵 2. Цовагюх — Тайник — Гош (без «Тайник»)",
       "⚪ 3. Тайное озеро — не нашёл на карте",
       "",
       "Карта © участники OpenStreetMap",
     ].join("\n"),
   );
-  assert.ok(routeMapCaption(Array.from({ length: 9 }, () => ({ text: "я".repeat(300), colorIndex: 0 }))).length <= 1024);
+  assert.ok(routeMapCaption(Array.from({ length: 9 }, () => ({ text: "я".repeat(300), colorIndex: 0, missing: ["ю".repeat(300)] }))).length <= 1024);
 });

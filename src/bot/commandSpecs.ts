@@ -69,7 +69,7 @@ export const COMMANDS = [
   { command: "get_open_poll", menu: "Ссылка на текущий открытый опрос", audience: "admin", where: "any",
     help: "/get_open_poll — получить ссылку на текущий открытый опрос" },
   { command: "route_map", menu: "Карта маршрутов текущего опроса", audience: "admin", where: "any",
-    help: "/route_map — заново опубликовать карту маршрутов ответом на открытый опрос (например, после /edit). Старт и финиш бот ищет по названию вида «Старт — Финиш»" },
+    help: "/route_map — заново опубликовать карту маршрутов ответом на открытый опрос (например, после /edit). Точки бот ищет по названию вида «Старт — Через — Финиш», про ненайденные спрашивает владельца группы в ЛС" },
   { command: "set_schedule", menu: "Настроить автосоздание опроса", audience: "admin", where: "any",
     help: "/set_schedule <день> <ЧЧ:ММ> — расписание автосоздания опроса" },
   { command: "set_close_schedule", menu: "Настроить автозакрытие опроса", audience: "admin", where: "any",

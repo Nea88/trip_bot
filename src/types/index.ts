@@ -30,11 +30,34 @@ export interface Suggestion {
 }
 
 // sourceText is the text that was geocoded: after /edit it differs from
-// text, and the place is geocoded again. null = not found on the map.
+// text, and the place is geocoded again. names are the route's points in
+// order (start, via…, finish); points[i] is where names[i] is, null = not
+// found. 1.21.0 saved start/finish instead — such entries are redone.
 export interface RouteGeo {
   sourceText: string;
-  start: GeoPoint | null;
-  finish: GeoPoint | null;
+  names: string[];
+  points: (GeoPoint | null)[];
+}
+
+// A point the owner gave for a name the geocoder couldn't find. Doc id: the
+// normalized name, so every place mentioning it gets the point.
+export interface GeoPointDoc {
+  name: string;
+  lat: number;
+  lon: number;
+  setByUserId: number;
+  setAt: Timestamp;
+}
+
+// The bot's question to the owner "where is <name>?" in DM, answered by
+// replying to it. Doc id: the normalized name, so it's asked once at a time.
+export interface GeoPromptDoc {
+  name: string;
+  // The place text the name comes from, for context.
+  placeText: string;
+  chatId: number;
+  messageId: number;
+  askedAt: Timestamp;
 }
 
 export interface SuggestionWithId extends Suggestion {
@@ -101,6 +124,9 @@ export interface PollDoc {
   // Coordinates when /meet replied to a location; used for the map pin and forecast.
   meetLatitude?: number | null;
   meetLongitude?: number | null;
+  // The route map posted as a reply to the poll; updated in place when the
+  // owner gives a missing point.
+  routeMapMessageId?: number | null;
 }
 
 export interface PollDocWithId extends PollDoc {
