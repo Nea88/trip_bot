@@ -51,12 +51,20 @@ export interface ApiCall {
  * handlers. `voteCounts` is what stopPoll reports; ADMIN_ID and OWNER_ID
  * (the creator) are the admins.
  */
-export function createFakeApi(options: { voteCounts?: number[]; unreachableChats?: number[] } = {}) {
+export function createFakeApi(
+  options: {
+    voteCounts?: number[];
+    unreachableChats?: number[];
+    // Telegram names of group members, as getChatMember reports them.
+    names?: Record<number, { first_name: string; last_name?: string }>;
+  } = {},
+) {
   const calls: ApiCall[] = [];
   let nextMessageId = 1000;
   const handlers: Record<string, (...args: unknown[]) => unknown> = {
     getChatMember: (_chat, userId) => ({
       status: userId === OWNER_ID ? "creator" : userId === ADMIN_ID ? "administrator" : "member",
+      user: { id: userId, is_bot: false, ...(options.names?.[userId as number] ?? { first_name: "" }) },
     }),
     sendPoll: () => ({ message_id: nextMessageId++, poll: { id: `tg-poll-${nextMessageId}` } }),
     stopPoll: () => ({

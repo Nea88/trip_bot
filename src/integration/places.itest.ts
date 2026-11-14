@@ -58,16 +58,37 @@ test("/exclude → /excluded → /restore round trip", async () => {
   assert.match((await run(excludedCommand, "")).lastReply(), /Исключённых мест нет/);
 });
 
-test("/list shows active places with author and photo count", async () => {
+test("/list shows active places with the author's Telegram name and photo count", async () => {
   assert.match((await run(listCommand, "", USER_ID)).lastReply(), /Активных предложений пока нет/);
   await addPlaces("дача", "озеро");
+  const named = await addSuggestion("гора", ADMIN_ID, "admin_nick", true, "Дмитрий С.");
+  await approveSuggestion(named.id);
+  const gone = await addSuggestion("лес", 77, "Оля", false);
+  await approveSuggestion(gone.id);
+  const anon = await addSuggestion("поле", 78, "left_nick", true);
+  await approveSuggestion(anon.id);
   await photoCommand(
     createFakeCtx(createFakeApi().api, { userId: ADMIN_ID, match: "2", replyTo: { message_id: 3, photo: photoSizes("l") } }).ctx,
   );
 
-  const text = (await run(listCommand, "", USER_ID)).lastReply();
-  assert.match(text, /^#1: дача \(добавил @vasya, \d\d\.\d\d\.\d{4}\)$/m);
-  assert.match(text, /^#2: озеро 📷 1 \(добавил @vasya/m);
+  // Vasya's name comes from Telegram (he's in the group) and is saved.
+  const fake = createFakeApi({ names: { [USER_ID]: { first_name: "Вася", last_name: "Пупкин" } } });
+  const list = createFakeCtx(fake.api, { userId: USER_ID });
+  await listCommand(list.ctx);
+  const text = list.lastReply();
+  assert.match(text, /^#1: дача \(добавил Вася Пупкин, \d\d\.\d\d\.\d{4}\)$/m);
+  assert.match(text, /^#2: озеро 📷 1 \(добавил Вася Пупкин/m);
+  assert.match(text, /^#3: гора \(добавил Дмитрий С\./m);
+  // Left the group: the first name saved back then, or just "участник".
+  assert.match(text, /^#4: лес \(добавил Оля/m);
+  assert.match(text, /^#5: поле \(добавил участник/m);
+  assert.doesNotMatch(text, /@/);
+  assert.equal(fake.callsTo("getChatMember").length, 3, "one lookup per author");
+  assert.equal((await getBySeq(1))?.addedByName, "Вася Пупкин");
+
+  const again = createFakeApi();
+  await listCommand(createFakeCtx(again.api, { userId: USER_ID }).ctx);
+  assert.equal(again.callsTo("getChatMember").length, 2, "saved names aren't looked up again");
 });
 
 test("/list splits a long list into several messages", async () => {

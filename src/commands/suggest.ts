@@ -8,7 +8,7 @@ import { NO_ADMINS_NOTE, notifyAdmins } from "../services/notifications.js";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { isAdminSender } from "../services/adminAuth.js";
 import { normalizeSuggestionText, validateSuggestionText } from "../utils/suggestionText.js";
-import { formatUserName } from "../utils/userName.js";
+import { formatUserName, telegramName } from "../utils/userName.js";
 import { buildReviewCallbackData } from "./reviewSuggestion.js";
 
 export async function suggestCommand(ctx: Context): Promise<void> {
@@ -47,7 +47,7 @@ export async function suggestCommand(ctx: Context): Promise<void> {
   const config = await getGroupConfig();
   const isAdmin = await isAdminSender(ctx, config.groupChatId);
 
-  const suggestion = await addSuggestion(text, userId, username, hasUsername);
+  const suggestion = await addSuggestion(text, userId, username, hasUsername, telegramName(ctx.from));
 
   if (isAdmin) {
     await approveSuggestion(suggestion.id);

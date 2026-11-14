@@ -17,6 +17,9 @@ export interface Suggestion {
   // false when addedByUsername is a first name; missing on suggestions added
   // before this field existed (treated as a real username).
   addedByHasUsername?: boolean;
+  // The author's name in Telegram (first + last), shown in /list; missing on
+  // older places until /list looks it up.
+  addedByName?: string;
   addedAt: Timestamp;
   status: SuggestionStatus;
   excludedAt: Timestamp | null;

@@ -34,6 +34,7 @@ export async function addSuggestion(
   addedByUserId: number,
   addedByUsername: string,
   addedByHasUsername: boolean,
+  addedByName?: string | null,
 ): Promise<SuggestionWithId> {
   const seq = await nextSeq();
   const doc: Suggestion = {
@@ -43,6 +44,7 @@ export async function addSuggestion(
     addedByUserId,
     addedByUsername,
     addedByHasUsername,
+    ...(addedByName ? { addedByName } : {}),
     addedAt: FieldValue.serverTimestamp() as unknown as Suggestion["addedAt"],
     status: "pending",
     excludedAt: null,
@@ -128,6 +130,10 @@ export async function getById(id: string): Promise<SuggestionWithId | null> {
   const snap = await suggestions.doc(id).get();
   if (!snap.exists) return null;
   return { id: snap.id, ...(snap.data() as Suggestion) };
+}
+
+export async function setAddedByName(id: string, addedByName: string): Promise<void> {
+  await suggestions.doc(id).update({ addedByName });
 }
 
 export async function setRouteGeo(id: string, routeGeo: RouteGeo): Promise<void> {
