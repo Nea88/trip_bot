@@ -1,5 +1,5 @@
 import { escapeHtml } from "../utils/html.js";
-import { normalizePlaceName, pointKind, type PointKind } from "../utils/routeText.js";
+import { normalizePlaceName, pointKind, routeGeoFresh, type PointKind } from "../utils/routeText.js";
 import type { RouteGeo, SuggestionStatus } from "../types/index.js";
 
 // The Home Assistant panel's page, rendered on the server. Every link and
@@ -49,7 +49,11 @@ td.kind { color: var(--muted); width: 60px; }
 td.coords { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .missing { color: var(--warn); }
 .source { color: var(--muted); font-size: 12px; display: block; }
-form.point { display: flex; gap: 6px; flex-wrap: wrap; }
+form.point, form.rename { display: flex; gap: 6px; flex-wrap: wrap; }
+details.rename { margin: 0 0 10px; }
+details.rename summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+details.rename form { margin-top: 6px; }
+details.rename p { color: var(--muted); font-size: 12px; margin: 4px 0 0; }
 input[type=text] { flex: 1 1 220px; min-width: 0; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; }
 button { padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
 button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
@@ -84,16 +88,23 @@ function pointRows(place: PlaceRow, geo: RouteGeo, page: PointsPage): string {
 
 function placeSection(place: PlaceRow, page: PointsPage): string {
   const geo = place.routeGeo;
-  const fresh = geo && Array.isArray(geo.points) && geo.sourceText === place.text;
+  const fresh = geo !== undefined && routeGeoFresh(place.text, geo);
   const locate = `<form method="post" action="locate">${hidden("token", page.formToken)}${hidden("id", place.id)}<button>${geo ? "Найти точки заново" : "Найти точки"}</button></form>`;
   const body = fresh
     ? geo.names.length > 0
       ? `<table>${pointRows(place, geo, page)}</table>`
       : `<p class="empty">В названии нет точек.</p>`
-    : `<p class="empty">${geo ? "Название изменилось — точки ещё не искали." : "Точки ещё не искали: это происходит, когда место попадает в опрос."}</p>${locate}`;
+    : `<p class="empty">${geo ? "Название или правила разбора изменились — точки надо найти заново." : "Точки ещё не искали: это происходит, когда место попадает в опрос."}</p>${locate}`;
   const preview = fresh && geo.points.some(Boolean) ? `<a class="preview" href="preview/${encodeURIComponent(place.id)}.png" target="_blank" rel="noopener">Показать карту</a>` : "";
+  const rename = `<details class="rename"><summary>Переименовать</summary>
+    <form class="rename" method="post" action="rename">${hidden("token", page.formToken)}${hidden("id", place.id)}
+      <input type="text" name="text" value="${escapeHtml(place.text)}" maxlength="100" required aria-label="Новое название #${place.seq}">
+      <button class="primary">Сохранить название</button></form>
+    <p>Точки разделяются «-», «—», «->» или «→»: «Семёновка — Дилижан — Гош». После переименования бот найдёт точки заново.</p>
+  </details>`;
   return `<section>
   <h2>#${place.seq} ${escapeHtml(place.text)} <span class="status">${STATUS_LABELS[place.status] ?? ""}</span>${preview}</h2>
+  ${rename}
   ${body}
 </section>`;
 }

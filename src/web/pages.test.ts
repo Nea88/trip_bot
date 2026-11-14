@@ -5,11 +5,11 @@ import { renderPointsPage, type PlaceRow } from "./pages.js";
 const route: PlaceRow = {
   id: "a",
   seq: 3,
-  text: "Цовагюх — <Тайник> — Гош",
+  text: "Цовагюх — Тайник <& — Гош",
   status: "active",
   routeGeo: {
-    sourceText: "Цовагюх — <Тайник> — Гош",
-    names: ["Цовагюх", "<Тайник>", "Гош"],
+    sourceText: "Цовагюх — Тайник <& — Гош",
+    names: ["Цовагюх", "Тайник <&", "Гош"],
     points: [{ lat: 40.632, lon: 44.9583 }, null, { lat: 40.7297, lon: 44.9958 }],
   },
 };
@@ -20,9 +20,9 @@ const render = (places: PlaceRow[], manual: string[] = [], message: string | nul
 test("points page: roles, coordinates, missing points, escaped names", () => {
   const page = render([route]);
   assert.match(page, /<td class="kind">старт<\/td>\s*<td>Цовагюх<\/td>\s*<td class="coords">40\.63200, 44\.95830/);
-  assert.match(page, /<td class="kind">через<\/td>\s*<td>&lt;Тайник&gt;<\/td>\s*<td class="coords"><span class="missing">не найдено/);
+  assert.match(page, /<td class="kind">через<\/td>\s*<td>Тайник &lt;&amp;<\/td>\s*<td class="coords"><span class="missing">не найдено/);
   assert.match(page, /<td class="kind">финиш<\/td>/);
-  assert.doesNotMatch(page, /<Тайник>/);
+  assert.doesNotMatch(page, /Тайник <&/);
   assert.match(page, /name="token" value="tok"/);
   assert.match(page, /href="preview\/a\.png"/);
 });
@@ -52,7 +52,7 @@ test("points page: places not looked up yet, stale ones, hidden statuses, messag
     "Готово & сохранено",
   );
   assert.match(page, /#4 Арагац[\s\S]*Точки ещё не искали[\s\S]*Найти точки</);
-  assert.match(page, /#5 Цовагюх — Гош[\s\S]*Название изменилось[\s\S]*Найти точки заново/);
+  assert.match(page, /#5 Цовагюх — Гош[\s\S]*Название или правила разбора изменились[\s\S]*Найти точки заново/);
   assert.doesNotMatch(page, /ждёт|отказ/);
   assert.match(page, /Готово &amp; сохранено/);
 });
@@ -65,4 +65,11 @@ test("points page: active places first, newest first", () => {
   ]);
   const at = (s: string) => page.indexOf(s);
   assert.ok(at("#9 новое") < at("#2 второе") && at("#2 второе") < at("#1 старое"));
+});
+
+test("points page: every place can be renamed, current text prefilled and escaped", () => {
+  const page = render([route]);
+  assert.match(page, /<form class="rename" method="post" action="rename">/);
+  assert.match(page, /name="id" value="a"/);
+  assert.match(page, /name="text" value="Цовагюх — Тайник &lt;&amp; — Гош" maxlength="100"/);
 });

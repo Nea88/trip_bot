@@ -1,6 +1,6 @@
 import type { RouteGeo, SuggestionWithId } from "../types/index.js";
 import type { GeoPoint } from "../utils/routeMap.js";
-import { geocodeQueries, splitRoute } from "../utils/routeText.js";
+import { geocodeQueries, routeGeoFresh, splitRoute } from "../utils/routeText.js";
 import { setRouteGeo } from "./suggestions.js";
 import { getGeoPoint } from "./geoPoints.js";
 import { OSM_USER_AGENT } from "../constants.js";
@@ -68,7 +68,7 @@ async function locate(name: string): Promise<GeoPoint | null> {
  */
 export async function resolveRouteGeo(suggestion: SuggestionWithId): Promise<RouteGeo & { unavailable?: boolean }> {
   const cached = suggestion.routeGeo;
-  if (cached?.sourceText === suggestion.text && Array.isArray(cached.points)) {
+  if (cached && routeGeoFresh(suggestion.text, cached)) {
     if (cached.points.every(Boolean)) return cached;
     const points = await Promise.all(cached.points.map(async (p, i) => p ?? (await getGeoPoint(cached.names[i]))));
     if (points.some((p, i) => p && !cached.points[i])) {

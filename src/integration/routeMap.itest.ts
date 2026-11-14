@@ -186,7 +186,7 @@ test("links to other sites aren't fetched", async () => {
 });
 
 test("no map when nothing is found; the poll is posted all the same", async () => {
-  await addPlaces("Тайное озеро", "Где-то там");
+  await addPlaces("Тайное озеро", "Где там");
   const { callsTo, calls } = await openPoll();
   assert.equal(callsTo("sendPoll").length, 1);
   assert.equal(callsTo("pinChatMessage").length, 1);

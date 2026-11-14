@@ -2,8 +2,12 @@
 // "Ереван — Севан — Дилижан" → start, via point, finish. Without a separator
 // the whole text is one point.
 
-// Spaced dashes only, so names like "Ай-Петри" stay whole.
-const SEPARATOR = /\s+[—–-]\s+|\s*(?:→|->|\/)\s*/;
+// Any dash, spaced or not ("Семёновка-Гош" too), and arrows typed any way:
+// "->", "-->", "–>", "=>", "→". Hyphen-like characters phones and Word put in
+// are dashes too. A hyphenated name ("Ай-Петри") splits as well — the group's
+// places are in Armenia, where that's rare.
+const DASHES = "\\-\u2010\u2011\u2012\u2013\u2014\u2015\u2212";
+const SEPARATOR = new RegExp(`\\s*(?:[${DASHES}=]*[>\u2192\u27f6\u279d\u2794\u21d2]|[${DASHES}]+|\\/)\\s*`);
 
 function clean(name: string): string {
   return name
@@ -15,6 +19,17 @@ function clean(name: string): string {
 
 export function splitRoute(text: string): string[] {
   return text.split(SEPARATOR).map(clean).filter(Boolean);
+}
+
+/**
+ * Whether saved points still match the place: same text, split the same way
+ * (the separators were widened in 1.23.2, so "Семёновка-Гош" saved as one
+ * point is redone), and in the current format.
+ */
+export function routeGeoFresh(text: string, geo: { sourceText: string; names?: string[]; points?: unknown } | undefined): boolean {
+  if (!geo || geo.sourceText !== text || !Array.isArray(geo.points) || !Array.isArray(geo.names)) return false;
+  const names = splitRoute(text);
+  return names.length === geo.names.length && names.every((n, i) => n === geo.names![i]);
 }
 
 export type PointKind = "start" | "via" | "finish";

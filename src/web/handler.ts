@@ -7,6 +7,8 @@ import { resolveCoordinates } from "../services/coordinates.js";
 import { resetPointForName, setPointForName } from "../services/pointEdits.js";
 import { refreshRouteMap, renderRouteMap } from "../services/routeMap.js";
 import { getGroupConfig } from "../services/groupConfig.js";
+import { getOpenPoll } from "../services/polls.js";
+import { renamePlace } from "../services/placeRename.js";
 import { renderPointsPage } from "./pages.js";
 import { pluralRu } from "../utils/plural.js";
 
@@ -98,6 +100,31 @@ async function locate(api: Api, form: URLSearchParams): Promise<WebResponse> {
   return backWith(`#${place.seq}: найдено точек — ${found} из ${geo.names.length}.${await mapNote(api)}`);
 }
 
+async function rename(api: Api, form: URLSearchParams): Promise<WebResponse> {
+  const result = await renamePlace(form.get("id") ?? "", form.get("text") ?? "", ["active", "excluded"]);
+  switch (result.kind) {
+    case "invalid":
+      return backWith(`Название не сохранено: ${result.error}`);
+    case "not_found":
+      return backWith("Место не найдено — возможно, его удалили.");
+    case "duplicate":
+      return backWith(`Название не сохранено: такое уже есть — #${result.seq} «${result.text}».`);
+    case "unchanged":
+      return backWith("Название не изменилось.");
+  }
+  const { place, oldText } = result;
+  const geo = await resolveRouteGeo(place);
+  const points = geo.unavailable
+    ? " Поиск по карте сейчас недоступен — точки найдутся позже."
+    : ` Точек найдено: ${geo.points.filter(Boolean).length} из ${geo.names.length}.`;
+  const { groupChatId } = await getGroupConfig();
+  const poll = await getOpenPoll(groupChatId);
+  const inPoll = poll?.optionSuggestionIds.includes(place.id)
+    ? " В уже отправленном опросе вариант останется со старым названием — Telegram не даёт менять опросы."
+    : "";
+  return backWith(`#${place.seq}: «${oldText}» → «${place.text}».${points}${await mapNote(api)}${inPoll}`);
+}
+
 async function preview(id: string): Promise<WebResponse> {
   const place = await getById(id);
   if (!place) return text("Место не найдено.", 404);
@@ -122,10 +149,11 @@ export async function handleWeb(api: Api, req: WebRequest): Promise<WebResponse>
   const previewMatch = /^\/preview\/([^/]+)\.png$/.exec(path);
   if (req.method === "GET" && previewMatch) return preview(decodeURIComponent(previewMatch[1]));
 
-  if (req.method === "POST" && (path === "/points" || path === "/locate")) {
+  if (req.method === "POST" && (path === "/points" || path === "/locate" || path === "/rename")) {
     const form = new URLSearchParams(req.body);
     if (!tokenOk(form.get("token"))) return backWith("Страница устарела (бот перезапускался) — повторите действие.");
-    return path === "/points" ? savePoint(api, req, form) : locate(api, form);
+    if (path === "/points") return savePoint(api, req, form);
+    return path === "/locate" ? locate(api, form) : rename(api, form);
   }
 
   return text("Не найдено.", 404);
