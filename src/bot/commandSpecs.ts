@@ -7,8 +7,9 @@ export interface CommandSpec {
   // Line in /help.
   help: string;
   audience: "all" | "admin";
-  // Where the command works: only the group, only a DM with the bot, or both.
-  where: "group" | "dm" | "any";
+  // Where the command works: only the group, only a DM with the bot, or both;
+  // "groupOrAdminDm" — the group, and for admins their DM with the bot too.
+  where: "group" | "groupOrAdminDm" | "dm" | "any";
 }
 
 /**
@@ -17,23 +18,23 @@ export interface CommandSpec {
  * help.ts the /help text. Order here is the order in menus and help.
  */
 export const COMMANDS = [
-  { command: "suggest", menu: "Предложить вариант маршрута", audience: "all", where: "group",
+  { command: "suggest", menu: "Предложить вариант маршрута", audience: "all", where: "groupOrAdminDm",
     help: "/suggest <куда> — предложить вариант маршрута (в группе). Уходит на рассмотрение админу, появится в списке после одобрения" },
-  { command: "list", menu: "Текущие варианты маршрутов", audience: "all", where: "group",
+  { command: "list", menu: "Текущие варианты маршрутов", audience: "all", where: "groupOrAdminDm",
     help: "/list — посмотреть текущие (уже одобренные) варианты (в группе)" },
   { command: "photo", menu: "Прикрепить фото (ответом) к месту", audience: "all", where: "group",
     help: "/photo <номер> — ответом на сообщение (фото, альбом, видео, текст — что угодно) прикрепить его к месту, где были. Уходит на модерацию админу" },
-  { command: "place", menu: "Фото и поездки по месту", audience: "all", where: "group",
+  { command: "place", menu: "Фото и поездки по месту", audience: "all", where: "groupOrAdminDm",
     help: "/place <номер> — даты поездок и ссылки на фото и сообщения из архива места (в группе)" },
-  { command: "history", menu: "Прошлые поездки и статистика", audience: "all", where: "group",
+  { command: "history", menu: "Прошлые поездки и статистика", audience: "all", where: "groupOrAdminDm",
     help: "/history — прошлые поездки, самые активные авторы идей и варианты, которые чаще всего проигрывали (в группе)" },
   { command: "links", menu: "Полезные ссылки группы", audience: "all", where: "any",
     help: "/links — полезные ссылки группы" },
   { command: "addlink", menu: "Предложить полезную ссылку", audience: "all", where: "any",
     help: "/addlink <ссылка> <описание> — предложить полезную ссылку. Уходит на проверку админу" },
-  { command: "year", menu: "Итоги года", audience: "all", where: "group",
+  { command: "year", menu: "Итоги года", audience: "all", where: "groupOrAdminDm",
     help: "/year [год] — итоги года: поездки, лидеры по идеям и по архиву (в группе). 31 декабря бот публикует их сам" },
-  { command: "top", menu: "Рейтинг участников за год", audience: "all", where: "group",
+  { command: "top", menu: "Рейтинг участников за год", audience: "all", where: "groupOrAdminDm",
     help: "/top [год] — рейтинг года: кто больше всех ездил, предлагал места и пополнял архив (в группе)" },
   { command: "me", menu: "Моя статистика", audience: "all", where: "any",
     help: "/me — ваша статистика: поездки (по голосу в опросе за место, куда съездили), идеи, что вы добавили в архив" },
@@ -60,9 +61,9 @@ export const COMMANDS = [
     help: "/create_poll — создать опрос прямо сейчас" },
   { command: "meet", menu: "Точка и время старта субботней поездки", audience: "admin", where: "any",
     help: "/meet <ЧЧ:ММ> <точка> — точка и время старта субботней поездки (до 20:00 пятницы), публикуется в группе. Ответом на геолокацию — ещё точка на карте и прогноз погоды" },
-  { command: "close_poll", menu: "Закрыть опрос и подтвердить, куда съездили", audience: "admin", where: "group",
+  { command: "close_poll", menu: "Закрыть опрос и подтвердить, куда съездили", audience: "admin", where: "groupOrAdminDm",
     help: "/close_poll — закрыть текущий опрос и подтвердить, куда съездили" },
-  { command: "cancel_poll", menu: "Закрыть опрос без подсчёта результатов", audience: "admin", where: "group",
+  { command: "cancel_poll", menu: "Закрыть опрос без подсчёта результатов", audience: "admin", where: "groupOrAdminDm",
     help: "/cancel_poll — закрыть текущий опрос без подсчёта результатов (место не исключается)" },
   { command: "cancel_ride", menu: "Отменить субботнюю поездку", audience: "admin", where: "any",
     help: "/cancel_ride [причина] — отменить субботнюю поездку: опрос закрывается без победителя, места остаются в пуле, в группе — объявление с упоминанием проголосовавших" },
@@ -106,10 +107,11 @@ export type MenuScope = "private" | "group" | "groupAdmin" | "privateAdmin";
 export function menuFor(scope: MenuScope): BotCommand[] {
   const forAll = specs.filter((c) => c.audience === "all");
   const inGroup = (c: CommandSpec) => c.where !== "dm";
+  const inMemberDm = (c: CommandSpec) => c.where === "dm" || c.where === "any";
   const inDm = (c: CommandSpec) => c.where !== "group";
   switch (scope) {
     case "private":
-      return helpLast(forAll.filter(inDm));
+      return helpLast(forAll.filter(inMemberDm));
     case "group":
       return helpLast(forAll.filter(inGroup));
     case "groupAdmin":
@@ -134,6 +136,7 @@ export function helpText(isAdmin: boolean): string {
     "",
     "Команды для админов группы:",
     "Одобрение/отклонение новых предложений и фото — кнопками прямо в DM-уведомлении, отдельной команды нет",
+    "Команды, которые у участников работают только в группе, админам доступны и в личке с ботом — кроме /photo и /unphoto",
     ...adminLines,
   ].join("\n");
 }

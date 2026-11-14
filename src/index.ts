@@ -20,6 +20,7 @@ import { registerBotCommands } from "./bot/commands.js";
 import { getGroupConfig } from "./services/groupConfig.js";
 import { firestoreHealthy } from "./services/health.js";
 import { healthStatus } from "./utils/health.js";
+import { startWebServer } from "./web/server.js";
 
 async function main(): Promise<void> {
   const bot = createBot();
@@ -78,6 +79,8 @@ async function main(): Promise<void> {
       });
   }
 
+  const webServer = env.ingressPort ? startWebServer(bot.api, env.ingressPort) : null;
+
   // Home Assistant stops/updates the add-on with SIGTERM. Stopping the bot
   // properly confirms the last processed update to Telegram — otherwise it
   // re-delivers the last batch after restart and commands get answered twice.
@@ -85,6 +88,7 @@ async function main(): Promise<void> {
     console.log(`[bot] ${signal} received, shutting down…`);
     await stopAllTasks();
     healthServer?.close();
+    webServer?.close();
     await bot.stop();
     process.exit(0);
   };

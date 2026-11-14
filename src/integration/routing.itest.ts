@@ -75,7 +75,7 @@ test("every admin command refuses a regular member", async () => {
 });
 
 test("group-only commands refuse DMs; DM-only commands refuse the group", async () => {
-  for (const spec of specs.filter((c) => c.where !== "any")) {
+  for (const spec of specs.filter((c) => c.where === "group" || c.where === "dm")) {
     const { bot, texts } = makeBot();
     const fromId = spec.audience === "admin" ? ADMIN_ID : USER_ID;
     const wrongChat = spec.where === "group" ? (fromId === ADMIN_ID ? ADMIN_DM : USER_DM) : GROUP_CHAT_ID;
@@ -84,6 +84,29 @@ test("group-only commands refuse DMs; DM-only commands refuse the group", async 
       spec.where === "group" ? "Эта команда работает только в группе поездок." : "Напишите мне это в личные сообщения.";
     assert.deepEqual(texts(), [expected], `/${spec.command}`);
   }
+});
+
+test("group commands open to admins' DMs refuse members there", async () => {
+  for (const spec of specs.filter((c) => c.where === "groupOrAdminDm" && c.audience === "all")) {
+    const { bot, texts } = makeBot();
+    await bot.handleUpdate(commandUpdate(`/${spec.command}`, USER_ID, USER_DM));
+    assert.deepEqual(texts(), ["Эта команда работает только в группе поездок (админам — и в личке с ботом)."], `/${spec.command}`);
+  }
+});
+
+test("admins run group commands in their DM; /photo stays in the group", async () => {
+  await addSuggestion("дача", USER_ID, "user2", true);
+  const { bot, texts } = makeBot();
+  await bot.handleUpdate(commandUpdate("/list", ADMIN_ID, ADMIN_DM));
+  await bot.handleUpdate(commandUpdate("/close_poll", ADMIN_ID, ADMIN_DM));
+  await bot.handleUpdate(commandUpdate("/suggest Арагац", ADMIN_ID, ADMIN_DM));
+  await bot.handleUpdate(commandUpdate("/photo 1", ADMIN_ID, ADMIN_DM));
+  assert.deepEqual(texts(), [
+    "Активных предложений пока нет.",
+    "Сейчас нет открытого опроса.",
+    "Добавлено предложение #2: Арагац",
+    "Эта команда работает только в группе поездок.",
+  ]);
 });
 
 test("an admin gets through both guards to the handler", async () => {

@@ -21,14 +21,32 @@ export async function getGeoPoint(name: string): Promise<GeoPoint | null> {
   return { lat: doc.lat, lon: doc.lon };
 }
 
-export async function setGeoPoint(name: string, point: GeoPoint, setByUserId: number): Promise<void> {
+export interface PointAuthor {
+  userId: number | null;
+  via: "telegram" | "homeassistant";
+  name?: string | null;
+}
+
+export async function setGeoPoint(name: string, point: GeoPoint, by: PointAuthor): Promise<void> {
   await geoPoints.doc(key(name)).set({
     name,
     lat: point.lat,
     lon: point.lon,
-    setByUserId,
+    setByUserId: by.userId,
+    setVia: by.via,
+    setByName: by.name ?? null,
     setAt: FieldValue.serverTimestamp(),
   });
+}
+
+export async function deleteGeoPoint(name: string): Promise<void> {
+  await geoPoints.doc(key(name)).delete();
+}
+
+// Normalized names that have a point given by hand.
+export async function listGeoPointNames(): Promise<Set<string>> {
+  const snap = await geoPoints.get();
+  return new Set(snap.docs.map((d) => normalizePlaceName((d.data() as GeoPointDoc).name)));
 }
 
 export async function getGeoPrompt(name: string): Promise<GeoPromptDoc | null> {

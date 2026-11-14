@@ -39,13 +39,18 @@ export interface RouteGeo {
   points: (GeoPoint | null)[];
 }
 
-// A point the owner gave for a name the geocoder couldn't find. Doc id: the
+// A point given by hand for a name — by the owner answering the bot, or in
+// the Home Assistant panel; it beats the geocoder. Doc id: the
 // normalized name, so every place mentioning it gets the point.
 export interface GeoPointDoc {
   name: string;
   lat: number;
   lon: number;
-  setByUserId: number;
+  // Telegram user when the owner answered the bot; null from the HA panel.
+  setByUserId: number | null;
+  // Who and where: missing on points set before 1.23.0 (Telegram).
+  setVia?: "telegram" | "homeassistant";
+  setByName?: string | null;
   setAt: Timestamp;
 }
 

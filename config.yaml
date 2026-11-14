@@ -1,5 +1,5 @@
 name: "Ride Bot"
-version: "1.22.0"
+version: "1.23.0"
 slug: "ride_bot"
 description: "Telegram-бот для планирования групповых поездок"
 arch:
@@ -13,6 +13,12 @@ init: false
 ports:
   8099/tcp: null
 watchdog: "http://[HOST]:[PORT:8099]/"
+# Panel in the HA sidebar: route points of the places (src/web). Only the
+# Ingress proxy may connect; HA does the login.
+ingress: true
+ingress_port: 8100
+panel_icon: mdi:map-marker-path
+panel_title: Ride Bot
 options:
   bot_token: ""
   group_chat_id: ""

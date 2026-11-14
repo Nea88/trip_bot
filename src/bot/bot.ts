@@ -3,6 +3,7 @@ import { autoRetry } from "@grammyjs/auto-retry";
 import { env } from "../config/env.js";
 import { requireAdmin } from "./middleware/requireAdmin.js";
 import { requireGroupChat } from "./middleware/requireGroupChat.js";
+import { requireGroupOrAdminDm } from "./middleware/requireGroupOrAdminDm.js";
 import { requireDM } from "./middleware/requireDM.js";
 import { suggestCommand } from "../commands/suggest.js";
 import { listCommand } from "../commands/list.js";
@@ -107,6 +108,7 @@ export function createBot(): Bot {
     const guards: Middleware[] = [];
     if (spec.audience === "admin") guards.push(requireAdmin);
     if (spec.where === "group") guards.push(requireGroupChat);
+    if (spec.where === "groupOrAdminDm") guards.push(requireGroupOrAdminDm);
     if (spec.where === "dm") guards.push(requireDM);
     bot.command(spec.command, ...guards, HANDLERS[spec.command]);
   }

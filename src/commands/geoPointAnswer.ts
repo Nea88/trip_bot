@@ -1,7 +1,8 @@
 import type { Context, NextFunction } from "grammy";
 import { getGroupConfig } from "../services/groupConfig.js";
 import { isGroupOwner } from "../services/adminAuth.js";
-import { deleteGeoPrompt, findGeoPromptByMessage, setGeoPoint } from "../services/geoPoints.js";
+import { findGeoPromptByMessage } from "../services/geoPoints.js";
+import { setPointForName } from "../services/pointEdits.js";
 import { GEO_PROMPT_HINT, refreshRouteMap } from "../services/routeMap.js";
 import { resolveCoordinates } from "../services/coordinates.js";
 
@@ -28,8 +29,7 @@ export async function geoPointAnswerHandler(ctx: Context, next: NextFunction): P
     return;
   }
 
-  await setGeoPoint(prompt.name, point, ctx.from.id);
-  await deleteGeoPrompt(prompt.name);
+  await setPointForName(prompt.name, point, { userId: ctx.from.id, via: "telegram" });
   const refreshed = await refreshRouteMap(ctx.api, config.groupChatId);
   await ctx.reply(
     `📍 Запомнил «${prompt.name}»: ${point.lat.toFixed(5)}, ${point.lon.toFixed(5)}.` +

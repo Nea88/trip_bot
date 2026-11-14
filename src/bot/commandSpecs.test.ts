@@ -33,7 +33,12 @@ test("admin menus cover every admin command available there", () => {
     if (c.where !== "dm") assert.ok(groupAdmin.includes(c.command), `group admin menu lacks ${c.command}`);
     if (c.where !== "group") assert.ok(privateAdmin.includes(c.command), `private admin menu lacks ${c.command}`);
   }
-  assert.ok(!privateAdmin.includes("close_poll"), "group-only commands stay out of DMs");
+  for (const name of ["suggest", "list", "place", "history", "year", "top", "close_poll", "cancel_poll"]) {
+    assert.ok(privateAdmin.includes(name), `admins can ${name} in DM`);
+  }
+  for (const name of ["photo", "unphoto"]) {
+    assert.ok(!privateAdmin.includes(name), `${name} stays group-only`);
+  }
   assert.equal(privateAdmin.at(-1), "start");
 });
 
